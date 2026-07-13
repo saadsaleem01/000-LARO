@@ -1352,6 +1352,74 @@
             grid-template-columns: minmax(0, 1.15fr) minmax(240px, 0.85fr);
         }
 
+        .document-inbox-form {
+            border-top: 1px solid var(--ledger-border);
+            display: grid;
+            gap: 0.75rem;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            margin-top: 0.75rem;
+            padding-top: 0.85rem;
+        }
+
+        .document-inbox-form[hidden] {
+            display: none;
+        }
+
+        .document-inbox-form .is-wide {
+            grid-column: 1 / -1;
+        }
+
+        .document-inbox-list {
+            display: grid;
+            gap: 0.7rem;
+            margin-top: 0.85rem;
+        }
+
+        .document-inbox-item {
+            background: rgba(5, 12, 24, 0.58);
+            border: 1px solid var(--ledger-border);
+            border-radius: 8px;
+            display: grid;
+            gap: 0.75rem;
+            grid-template-columns: minmax(0, 1fr) minmax(250px, 0.72fr);
+            padding: 0.82rem;
+        }
+
+        .document-inbox-main,
+        .document-inbox-match {
+            display: grid;
+            gap: 0.48rem;
+            min-width: 0;
+        }
+
+        .document-inbox-meta,
+        .document-inbox-actions {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+        }
+
+        .document-inbox-match {
+            border-left: 1px solid var(--ledger-border);
+            padding-left: 0.8rem;
+        }
+
+        .document-inbox-reasons {
+            color: var(--ledger-muted);
+            font-size: 0.78rem;
+            line-height: 1.4;
+            margin: 0;
+        }
+
+        .document-inbox-preview {
+            color: var(--ledger-muted);
+            font-size: 0.82rem;
+            line-height: 1.45;
+            margin: 0;
+            overflow-wrap: anywhere;
+        }
+
         .intake-primary {
             background: rgba(255, 107, 0, 0.08);
             border: 1px solid rgba(255, 107, 0, 0.28);
@@ -2229,6 +2297,13 @@
             outline: 0;
         }
 
+        .source-passage-highlight {
+            background: rgba(255, 193, 7, 0.22);
+            border-bottom: 2px solid var(--ledger-orange);
+            color: var(--ledger-text);
+            padding: 0 0.08rem;
+        }
+
         .source-ref-list {
             display: flex;
             flex-wrap: wrap;
@@ -2254,6 +2329,29 @@
             font-size: 0.74rem;
             height: 22px;
             width: 22px;
+        }
+
+        .source-ref-chip span:last-child {
+            overflow-wrap: anywhere;
+        }
+
+        .analysis-coverage {
+            background: rgba(255, 255, 255, 0.035);
+            border: 1px solid var(--ledger-border);
+            border-radius: 6px;
+            margin: 0.75rem 0;
+            padding: 0.65rem 0.75rem;
+        }
+
+        .analysis-coverage summary {
+            color: var(--ledger-soft);
+            cursor: pointer;
+            font-size: 0.84rem;
+            font-weight: 800;
+        }
+
+        .analysis-coverage p {
+            margin-top: 0.45rem;
         }
 
         .source-preview-shell {
@@ -2684,6 +2782,16 @@
             gap: 0.35rem;
         }
 
+        .timeline-filters {
+            flex-basis: 100%;
+            margin-top: 0;
+            width: 100%;
+        }
+
+        .timeline-filters .form-grid {
+            margin-top: 0.7rem;
+        }
+
         .timeline-mode-button,
         .timeline-filter-button {
             background: #07101f;
@@ -2701,6 +2809,142 @@
         .timeline-filter-button.is-active {
             border-color: var(--ledger-orange);
             color: var(--ledger-orange);
+        }
+
+        .position-matrix {
+            display: grid;
+            gap: 0.85rem;
+        }
+
+        .position-matrix-header,
+        .position-group-header,
+        .claim-position-heading {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.65rem;
+            justify-content: space-between;
+        }
+
+        .position-summary-grid {
+            display: grid;
+            gap: 0.45rem;
+            grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+        }
+
+        .position-summary-button {
+            background: #07101f;
+            border: 1px solid var(--ledger-border);
+            border-radius: 8px;
+            color: var(--ledger-muted);
+            cursor: pointer;
+            display: grid;
+            gap: 0.18rem;
+            min-height: 62px;
+            padding: 0.55rem 0.65rem;
+            text-align: left;
+        }
+
+        .position-summary-button strong {
+            color: var(--ledger-text);
+            font-size: 1.05rem;
+            line-height: 1;
+        }
+
+        .position-summary-button span {
+            font-size: 0.72rem;
+            font-weight: 850;
+            text-transform: uppercase;
+        }
+
+        .position-summary-button.is-active,
+        .position-summary-button:hover {
+            border-color: rgba(255, 107, 0, 0.58);
+        }
+
+        .position-summary-button.is-active span {
+            color: var(--ledger-orange);
+        }
+
+        .position-group {
+            border-top: 1px solid var(--ledger-border);
+            display: grid;
+            gap: 0.55rem;
+            padding-top: 0.75rem;
+        }
+
+        .position-group-header h3,
+        .position-group-header p {
+            margin: 0;
+        }
+
+        .claim-position-row {
+            background: transparent;
+            border: 0;
+            border-bottom: 1px solid var(--ledger-border);
+            border-left: 4px solid var(--ledger-soft);
+            border-radius: 0;
+            display: grid;
+            gap: 0.7rem;
+            padding: 0.78rem;
+        }
+
+        .claim-position-row[data-evidence-state="supported"] { border-left-color: var(--ledger-green); }
+        .claim-position-row[data-evidence-state="mixed"] { border-left-color: var(--ledger-orange); }
+        .claim-position-row[data-evidence-state="disputed"] { border-left-color: var(--ledger-red); }
+        .claim-position-row[data-evidence-state="context"] { border-left-color: var(--ledger-blue); }
+
+        .claim-state-label {
+            color: var(--ledger-muted);
+            font-size: 0.74rem;
+            font-weight: 900;
+            text-transform: uppercase;
+        }
+
+        .claim-state-label[data-evidence-state="supported"] { color: var(--ledger-green); }
+        .claim-state-label[data-evidence-state="mixed"] { color: var(--ledger-orange); }
+        .claim-state-label[data-evidence-state="disputed"] { color: var(--ledger-red); }
+        .claim-state-label[data-evidence-state="context"] { color: var(--ledger-blue); }
+
+        .claim-source-lanes {
+            border-top: 1px solid var(--ledger-border);
+            display: grid;
+            gap: 0.55rem;
+            padding-top: 0.65rem;
+        }
+
+        .claim-source-lane {
+            display: grid;
+            gap: 0.35rem;
+        }
+
+        .claim-source-lane > strong {
+            color: var(--ledger-muted);
+            font-size: 0.72rem;
+            text-transform: uppercase;
+        }
+
+        .claim-source-row {
+            align-items: start;
+            display: grid;
+            gap: 0.55rem;
+            grid-template-columns: minmax(0, 1fr) auto;
+        }
+
+        .claim-source-row p {
+            overflow-wrap: anywhere;
+        }
+
+        .claim-source-actions {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            grid-column: 1 / -1;
+        }
+
+        .evidence-relation-select {
+            min-width: 190px;
         }
 
         .timeline-vertical {
@@ -3054,6 +3298,7 @@
             .case-now-workbench,
             .focus-control-deck,
             .evidence-intake-grid,
+            .document-inbox-item,
             body[data-depth="expert"] .detail-workspace,
             .papertrail-toolbar,
             .workflow-rail,
@@ -3065,6 +3310,13 @@
             .topbar {
                 align-items: flex-start;
                 flex-direction: column;
+            }
+
+            .document-inbox-match {
+                border-left: 0;
+                border-top: 1px solid var(--ledger-border);
+                padding-left: 0;
+                padding-top: 0.75rem;
             }
 
             .depth-cluster {
@@ -3121,6 +3373,14 @@
                 grid-template-columns: 1fr;
             }
 
+            .document-inbox-form {
+                grid-template-columns: 1fr;
+            }
+
+            .document-inbox-form .is-wide {
+                grid-column: auto;
+            }
+
             .timeline-story-event {
                 grid-template-columns: 1fr;
             }
@@ -3149,9 +3409,21 @@
             }
 
             .timeline-brief-header,
-            .timeline-source-card {
+            .timeline-source-card,
+            .position-matrix-header,
+            .position-group-header,
+            .claim-position-heading {
                 align-items: stretch;
                 flex-direction: column;
+            }
+
+            .claim-source-row {
+                grid-template-columns: minmax(0, 1fr) auto;
+            }
+
+            .evidence-relation-select {
+                min-width: 0;
+                width: 100%;
             }
 
             .timeline-vertical::before {
@@ -3213,7 +3485,7 @@
                 <a class="nav-link-ledger" href="dashboard_dark.html"><span class="nav-glyph">D</span> Dashboard</a>
                 <a class="nav-link-ledger active" href="case_command_center.html"><span class="nav-glyph">C</span> Command Center</a>
                 <a class="nav-link-ledger" href="evidence_timeline.html"><span class="nav-glyph">T</span> Evidence Timeline</a>
-                <a class="nav-link-ledger" href="outreach.html"><span class="nav-glyph">O</span> Outreach</a>
+                <a class="nav-link-ledger" id="outreachNavLink" href="outreach.html"><span class="nav-glyph">O</span> Outreach</a>
             </nav>
         </aside>
 
@@ -3259,7 +3531,7 @@
                 <div class="panel-header">
                     <div>
                         <h2 class="panel-title">Find In Papertrail</h2>
-                        <p class="muted">Search cases, documents, events, claims, gaps, deadlines, drafts, and outreach.</p>
+                        <p class="muted">Search inbox sources, cases, documents, events, claims, gaps, deadlines, obligations, drafts, and outreach.</p>
                     </div>
                     <span class="tag" id="ledgerSearchCount">Ready</span>
                 </div>
@@ -3292,6 +3564,56 @@
                     </div>
                     <div class="review-list" id="reviewList"></div>
                 </div>
+            </section>
+
+            <section class="panel guided-depth" id="document-inbox" aria-label="Document inbox">
+                <div class="panel-header">
+                    <div>
+                        <h2 class="panel-title">Document Inbox</h2>
+                        <p class="muted">Sources waiting for a confirmed case.</p>
+                    </div>
+                    <div class="button-row">
+                        <span class="tag orange" id="documentInboxCount">0 waiting</span>
+                        <button class="btn-ledger" type="button" id="toggleDocumentInboxForm"><span class="nav-glyph">+</span> Stage Source</button>
+                    </div>
+                </div>
+                <div class="document-inbox-form" id="documentInboxForm" hidden>
+                    <label class="input-field">
+                        <span>Source type</span>
+                        <select class="control" id="documentInboxSourceType">
+                            <option value="manual_text">Pasted text</option>
+                            <option value="manual_upload">Local file</option>
+                            <option value="gmail">Gmail record</option>
+                            <option value="google_drive">Google Drive record</option>
+                            <option value="letter">Letter</option>
+                        </select>
+                    </label>
+                    <label class="input-field">
+                        <span>Confidentiality</span>
+                        <select class="control" id="documentInboxConfidentiality">
+                            <option value="normal">Normal</option>
+                            <option value="sensitive">Sensitive</option>
+                            <option value="highly_sensitive">Highly sensitive</option>
+                        </select>
+                    </label>
+                    <label class="input-field is-wide">
+                        <span>Title</span>
+                        <input class="control" id="documentInboxTitle" placeholder="Decision, letter, email, or evidence note">
+                    </label>
+                    <label class="input-field is-wide">
+                        <span>Local file</span>
+                        <input class="control" id="documentInboxFile" type="file" accept=".txt,.pdf,.docx,.doc,.html,.htm,.eml,.msg,.rtf,.csv,.json">
+                    </label>
+                    <label class="input-field is-wide">
+                        <span>Source text</span>
+                        <textarea class="control" id="documentInboxText" placeholder="Paste the letter, email, decision, or extracted text"></textarea>
+                    </label>
+                    <div class="is-wide">
+                        <button class="btn-ledger" type="button" id="stageDocumentInbox">Analyze &amp; Stage</button>
+                        <div id="documentInboxStageStatus" class="form-note">Kept local until you confirm a case.</div>
+                    </div>
+                </div>
+                <div class="document-inbox-list" id="documentInboxItems"></div>
             </section>
 
             <section class="panel detail-shell guided-depth" id="case-intake">
@@ -3332,7 +3654,7 @@
                         <span>First source text</span>
                         <textarea class="control" id="caseInitialEvidence" placeholder="Optional: paste the first letter, email, decision, PDF text, or notes. LARO will attach and analyze it immediately after creating the case."></textarea>
                     </label>
-                    <p class="form-note is-wide" id="caseCreateStatus">Create the case once. If source text is included, LARO also creates the first evidence document, timeline suggestions, claims, gaps, deadlines, and open loops.</p>
+                    <p class="form-note is-wide" id="caseCreateStatus">Create the case once. If source text is included, LARO also creates the first evidence document, timeline suggestions, claims, gaps, deadlines, obligations, and open loops.</p>
                     <button class="btn-ledger" type="button" id="submitCase">Create Ledger Case</button>
                 </div>
                 <div class="case-table-wrap">
@@ -3396,6 +3718,7 @@
             <div class="source-preview-body" id="sourcePreviewBody"></div>
             <div class="source-preview-footer">
                 <button class="btn-secondary-ledger" type="button" id="sourcePreviewLocate">Show in documents</button>
+                <button class="btn-secondary-ledger" type="button" id="sourcePreviewReanalyze">Refresh analysis</button>
                 <button class="btn-ledger" type="button" id="sourcePreviewOpenOriginal">Open original</button>
             </div>
         </aside>
@@ -3428,17 +3751,26 @@
         let selectedTab = "overview";
         let timelineViewMode = "story";
         let timelineStatusFilter = "all";
+        let timelineActorFilter = "all";
+        let timelineKindFilter = "all";
+        let claimEvidenceFilter = "all";
+        let claimRoleFilter = "all";
         let reviewTypeFilter = "all";
         let papertrailTypeFilter = "all";
         let papertrailQuery = "";
         let detailState = {};
+        let googleConnectionState = null;
         let pendingFocusTarget = null;
         let sourcePreviewDocumentId = null;
+        let sourcePreviewSnippet = "";
         let toastTimer = null;
         let ledgerSearchTimer = null;
         let autoRefreshTimer = null;
         let autoRefreshInFlight = false;
         let autoRefreshPromise = null;
+        let googleConnectionWatchTimer = null;
+        let activeGooglePullJobId = null;
+        let activeCaseAnalysisJobId = null;
         const MODE_SUMMARIES = {
             simple: "One action, one case, no extra controls.",
             guided: "Review the case through documents, chronology, claims, and gaps.",
@@ -3508,6 +3840,7 @@
             const percent = Math.max(0, Math.min(100, Math.round(state.percent || 0)));
             const eta = percent >= 100 ? "done" : `${Math.max(1, Math.ceil(state.remaining || 1))}s left`;
             const words = state.words ? `${state.words.toLocaleString()} words` : "source text";
+            const location = state.location || "kept local in this case ledger";
             status.innerHTML = `
                 <div class="analysis-progress" role="status" aria-live="polite">
                     <div class="analysis-progress-header">
@@ -3515,7 +3848,7 @@
                         <span>${escapeHtml(percent)}% - ${escapeHtml(eta)}</span>
                     </div>
                     <div class="analysis-progress-track" aria-hidden="true"><div class="analysis-progress-fill" style="--analysis-progress: ${escapeHtml(percent)}%;"></div></div>
-                    <p class="analysis-progress-detail">${escapeHtml(state.phase || "Preparing source")} - ${escapeHtml(words)} - kept local in this case ledger.</p>
+                    <p class="analysis-progress-detail">${escapeHtml(state.phase || "Preparing source")} - ${escapeHtml(words)} - ${escapeHtml(location)}.</p>
                 </div>
             `;
         }
@@ -3542,7 +3875,8 @@
                     percent,
                     remaining: Math.max(1, totalSeconds - elapsed),
                     phase: phases[phaseIndex],
-                    words
+                    words,
+                    location: options.location
                 });
             };
             update();
@@ -3556,7 +3890,8 @@
                         percent: 100,
                         remaining: 0,
                         phase: "Ledger updated with real analysis results",
-                        words
+                        words,
+                        location: options.location
                     });
                 },
                 fail(message) {
@@ -3565,6 +3900,202 @@
                     if (status) status.textContent = message || "Analysis failed.";
                 }
             };
+        }
+
+        function renderGooglePullProgress(status, job = {}) {
+            if (!status) return;
+            const percent = Math.max(0, Math.min(100, Number(job.progress_percent || 0)));
+            const totalItems = Math.max(0, Number(job.total_items || 0));
+            const completedItems = Math.max(0, Number(job.completed_items || 0));
+            const totalWords = Math.max(0, Number(job.total_words || 0));
+            const processedWords = Math.max(0, Number(job.processed_words || 0));
+            const sourceLabel = job.source === "google_drive" ? "Google Drive" : "Gmail";
+            const remainingSeconds = Number(job.estimated_remaining_seconds);
+            const hasEstimatedRemaining = job.estimated_remaining_seconds !== null
+                && job.estimated_remaining_seconds !== undefined
+                && Number.isFinite(remainingSeconds)
+                && remainingSeconds > 0;
+            const eta = job.status === "completed"
+                ? "done"
+                : job.status === "failed"
+                    ? "needs attention"
+                    : hasEstimatedRemaining
+                        ? `${Math.max(1, Math.ceil(remainingSeconds))}s left`
+                        : "finding sources";
+            const countDetail = totalItems
+                ? `${completedItems}/${totalItems} source item${totalItems === 1 ? "" : "s"}`
+                : "Waiting for source list";
+            const wordDetail = totalWords
+                ? `${processedWords.toLocaleString()}/${totalWords.toLocaleString()} extracted words`
+                : "Word total appears after Google returns matching sources";
+            status.innerHTML = `
+                <div class="analysis-progress" role="status" aria-live="polite">
+                    <div class="analysis-progress-header">
+                        <strong>${escapeHtml(sourceLabel)} evidence pull</strong>
+                        <span>${escapeHtml(Math.round(percent))}% - ${escapeHtml(eta)}</span>
+                    </div>
+                    <div class="analysis-progress-track" aria-hidden="true"><div class="analysis-progress-fill" style="--analysis-progress: ${escapeHtml(percent)}%;"></div></div>
+                    <p class="analysis-progress-detail">${escapeHtml(job.stage || "Queued for local import")} - ${escapeHtml(countDetail)} - ${escapeHtml(wordDetail)}${job.current_item ? ` - ${escapeHtml(job.current_item)}` : ""}</p>
+                </div>
+            `;
+        }
+
+        function pause(milliseconds) {
+            return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
+        }
+
+        async function waitForGooglePullJob(caseId, jobId, status) {
+            while (true) {
+                const payload = await apiFetch(`/api/cases/${caseId}/documents/pull-google/jobs/${jobId}`);
+                const job = payload.job || {};
+                renderGooglePullProgress(status, job);
+                if (job.status === "completed") return job;
+                if (job.status === "failed") throw new Error(job.error || "Google evidence import needs attention");
+                await pause(700);
+            }
+        }
+
+        function resumeVisibleGooglePullJob() {
+            const job = (detailState.googleJobs || []).find((item) => ["queued", "running"].includes(item.status));
+            if (!job || !selectedCaseId || selectedTab !== "documents") return;
+            const status = document.getElementById("googlePullStatus");
+            if (!status) return;
+            renderGooglePullProgress(status, job);
+            if (activeGooglePullJobId) return;
+            activeGooglePullJobId = job.job_id;
+            waitForGooglePullJob(selectedCaseId, job.job_id, status)
+                .then(async (completedJob) => {
+                    const result = completedJob.result || {};
+                    showToast(`${result.imported_count || 0} Google source${result.imported_count === 1 ? "" : "s"} imported into the case ledger.`);
+                    await refreshActiveLedger({ silent: true });
+                })
+                .catch((error) => {
+                    if (status) status.textContent = error.message;
+                    showToast(error.message);
+                })
+                .finally(() => { activeGooglePullJobId = null; });
+        }
+
+        function renderCaseAnalysisJobProgress(status, job = {}) {
+            if (!status) return;
+            const percent = Math.max(0, Math.min(100, Number(job.progress_percent || 0)));
+            const totalDocuments = Math.max(0, Number(job.total_documents || 0));
+            const completedDocuments = Math.max(0, Number(job.completed_documents || 0));
+            const totalChunks = Math.max(0, Number(job.total_chunks || 0));
+            const completedChunks = Math.max(0, Number(job.completed_chunks || 0));
+            const totalWords = Math.max(0, Number(job.total_words || 0));
+            const processedWords = Math.max(0, Number(job.processed_words || 0));
+            const totalCharacters = Math.max(0, Number(job.total_characters || 0));
+            const processedCharacters = Math.max(0, Number(job.processed_characters || 0));
+            const remainingSeconds = Number(job.estimated_remaining_seconds);
+            const hasEta = job.estimated_remaining_seconds !== null
+                && job.estimated_remaining_seconds !== undefined
+                && Number.isFinite(remainingSeconds)
+                && remainingSeconds > 0;
+            const eta = job.status === "completed"
+                ? "done"
+                : job.status === "failed"
+                    ? "needs attention"
+                    : hasEta
+                        ? `${Math.max(1, Math.ceil(remainingSeconds))}s left`
+                        : "measuring local progress";
+            const providerLabel = job.provider === "ollama" ? "Local model full-source reading" : "Full-source deterministic reading";
+            const documentDetail = totalDocuments
+                ? `${completedDocuments}/${totalDocuments} document${totalDocuments === 1 ? "" : "s"}`
+                : "Preparing document list";
+            const chunkDetail = totalChunks
+                ? `${completedChunks}/${totalChunks} source chunk${totalChunks === 1 ? "" : "s"}`
+                : "Preparing source batches";
+            const wordDetail = totalWords
+                ? `${processedWords.toLocaleString()}/${totalWords.toLocaleString()} words`
+                : `${processedCharacters.toLocaleString()}/${totalCharacters.toLocaleString()} characters`;
+            status.innerHTML = `
+                <div class="analysis-progress" role="status" aria-live="polite">
+                    <div class="analysis-progress-header">
+                        <strong>${escapeHtml(providerLabel)}</strong>
+                        <span>${escapeHtml(Math.round(percent))}% - ${escapeHtml(eta)}</span>
+                    </div>
+                    <div class="analysis-progress-track" aria-hidden="true"><div class="analysis-progress-fill" style="--analysis-progress: ${escapeHtml(percent)}%;"></div></div>
+                    <p class="analysis-progress-detail">${escapeHtml(job.stage || "Queued for local analysis")} - ${escapeHtml(documentDetail)} - ${escapeHtml(chunkDetail)} - ${escapeHtml(wordDetail)}${job.current_item ? ` - ${escapeHtml(job.current_item)}` : ""}</p>
+                    ${job.error ? `<p class="analysis-progress-detail">${escapeHtml(job.error)}</p>` : ""}
+                </div>
+            `;
+        }
+
+        async function waitForCaseAnalysisJob(caseId, jobId, status) {
+            while (true) {
+                const payload = await apiFetch(`/api/cases/${caseId}/case-analysis/jobs/${jobId}`);
+                const job = payload.job || {};
+                renderCaseAnalysisJobProgress(status, job);
+                if (job.status === "completed") return job;
+                if (job.status === "failed") throw new Error(job.error || "Full-source analysis needs attention");
+                await pause(700);
+            }
+        }
+
+        function resumeVisibleCaseAnalysisJob() {
+            const job = (detailState.caseAnalysisJobs || []).find((item) => ["queued", "running"].includes(item.status));
+            if (!job || !selectedCaseId) return;
+            const status = document.getElementById("caseAnalysisStatus");
+            if (!status) return;
+            renderCaseAnalysisJobProgress(status, job);
+            const button = document.getElementById("runCaseAnalysis");
+            if (button) {
+                button.disabled = true;
+                button.textContent = "Reading all sources...";
+            }
+            if (activeCaseAnalysisJobId) return;
+            activeCaseAnalysisJobId = job.job_id;
+            waitForCaseAnalysisJob(selectedCaseId, job.job_id, status)
+                .then(async (completedJob) => {
+                    const result = completedJob.result || {};
+                    showToast(`Full-source reading stored: ${result.timeline_suggestions_count || 0} timeline proposals and ${result.findings_count || 0} cited observations.`);
+                    await refreshActiveLedger({ silent: true });
+                })
+                .catch((error) => {
+                    if (status) status.textContent = error.message;
+                    showToast(error.message);
+                })
+                .finally(() => {
+                    activeCaseAnalysisJobId = null;
+                    const refreshedButton = document.getElementById("runCaseAnalysis");
+                    if (refreshedButton) {
+                        refreshedButton.disabled = false;
+                        refreshedButton.textContent = "Analyze all case sources";
+                    }
+                });
+        }
+
+        async function refreshGoogleConnectionState({ silent = false } = {}) {
+            googleConnectionState = await apiFetch("/api/google/oauth/status");
+            renderDetail();
+            if (!silent) showToast(googleConnectionState.connected ? "Google connected." : "Google connection status refreshed.");
+            return googleConnectionState;
+        }
+
+        function watchGoogleConnection(popup) {
+            window.clearInterval(googleConnectionWatchTimer);
+            const started = Date.now();
+            const check = async () => {
+                try {
+                    const status = await apiFetch("/api/google/oauth/status");
+                    if (status.connected) {
+                        window.clearInterval(googleConnectionWatchTimer);
+                        googleConnectionWatchTimer = null;
+                        googleConnectionState = status;
+                        renderDetail();
+                        showToast("Google connected. Gmail and Drive pulls are ready.");
+                    } else if ((popup && popup.closed) || Date.now() - started > 300000) {
+                        window.clearInterval(googleConnectionWatchTimer);
+                        googleConnectionWatchTimer = null;
+                    }
+                } catch (error) {
+                    window.clearInterval(googleConnectionWatchTimer);
+                    googleConnectionWatchTimer = null;
+                }
+            };
+            check();
+            googleConnectionWatchTimer = window.setInterval(check, 900);
         }
 
         function updateSyncStatus(message, syncing = false) {
@@ -3734,42 +4265,21 @@
             return "intake";
         }
 
-        function isDevelopmentQaCase(item) {
-            const title = String(item?.title || "").trim().toLowerCase();
-            return title.startsWith("qa ");
-        }
-
         function sanitizeCommandCenterState(state) {
-            const rawCases = state?.cases || [];
-            const visibleCases = rawCases.filter((item) => !isDevelopmentQaCase(item));
-            const hiddenIds = new Set(rawCases.filter(isDevelopmentQaCase).map((item) => String(item.case_id)));
-            const belongsToVisibleCase = (item) => !item.case_id || !hiddenIds.has(String(item.case_id));
-            const visibleApprovals = (state?.pending_approvals || []).filter(belongsToVisibleCase);
-            const visibleLoops = (state?.open_loops || []).filter(belongsToVisibleCase);
-            const visibleContradictions = (state?.contradictions || []).filter(belongsToVisibleCase);
-            const visibleMissingEvidence = (state?.missing_evidence || []).filter(belongsToVisibleCase);
-            const visibleDeadlines = (state?.deadlines || []).filter(belongsToVisibleCase);
+            const safeState = state || {};
             return {
-                ...(state || {}),
-                hidden_development_case_count: hiddenIds.size,
-                cases: visibleCases,
-                pending_approvals: visibleApprovals,
-                open_loops: visibleLoops,
-                contradictions: visibleContradictions,
-                missing_evidence: visibleMissingEvidence,
-                deadlines: visibleDeadlines,
-                recent_activity: (state?.recent_activity || []).filter(belongsToVisibleCase),
-                next_actions: (state?.next_actions || []).filter(belongsToVisibleCase),
-                counts: {
-                    ...(state?.counts || {}),
-                    active_cases: visibleCases.filter((item) => !["closed", "archived"].includes(item.status)).length,
-                    cases_needing_evidence: visibleCases.filter((item) => !Number(item.documents_count || 0)).length,
-                    pending_approvals: visibleApprovals.length,
-                    open_loops: visibleLoops.length,
-                    contradictions: visibleContradictions.length,
-                    missing_evidence: visibleMissingEvidence.length,
-                    deadlines: visibleDeadlines.length
-                }
+                ...safeState,
+                cases: safeState.cases || [],
+                pending_approvals: safeState.pending_approvals || [],
+                open_loops: safeState.open_loops || [],
+                contradictions: safeState.contradictions || [],
+                missing_evidence: safeState.missing_evidence || [],
+                deadlines: safeState.deadlines || [],
+                obligations: safeState.obligations || [],
+                document_inbox: safeState.document_inbox || [],
+                recent_activity: safeState.recent_activity || [],
+                next_actions: safeState.next_actions || [],
+                counts: safeState.counts || {}
             };
         }
 
@@ -3837,12 +4347,14 @@
         function renderMetrics(counts) {
             document.getElementById("metrics").innerHTML = [
                 metric("active cases", counts.active_cases || 0),
+                metric("document inbox", counts.document_inbox || 0),
                 metric("need evidence", counts.cases_needing_evidence || 0),
                 metric("approvals", counts.pending_approvals || 0),
                 metric("open loops", counts.open_loops || 0),
                 metric("contradictions", counts.contradictions || 0),
                 metric("missing evidence", counts.missing_evidence || 0),
-                metric("deadlines", counts.deadlines || 0)
+                metric("deadlines", counts.deadlines || 0),
+                metric("obligations", counts.obligations || 0)
             ].join("");
         }
 
@@ -3850,6 +4362,7 @@
             const map = {
                 approvals: "review",
                 deadlines: "review",
+                obligations: "review",
                 contradictions: "review",
                 "missing-evidence": "review",
                 "open-loops": "review",
@@ -3864,6 +4377,7 @@
                 papertrail: "papertrail",
                 bundle: "bundle",
                 audit: "audit",
+                "document-inbox": "overview",
                 "case-ledger": "overview",
                 "case-intake": "overview"
             };
@@ -3976,7 +4490,7 @@
                         <article class="decision-item">
                             <span>Needs Robert</span>
                             <strong>${escapeHtml(reviewCount)}</strong>
-                            <p>Approvals, gaps, contradictions, and open loops are surfaced first.</p>
+                            <p>Approvals, obligations, gaps, contradictions, and open loops are surfaced first.</p>
                         </article>
                         <article class="decision-item">
                             <span>Safe automation</span>
@@ -4030,9 +4544,11 @@
             };
             const primaryCaseId = primary.case_id || selectedCaseId || cases[0]?.case_id || "";
             const activeCase = selectedCase || cases.find((item) => String(item.case_id) === String(primaryCaseId)) || cases[0];
-            const actionButton = cases.length
-                ? `<button class="btn-ledger" type="button" data-command-action="open-target" data-case-id="${escapeHtml(primaryCaseId)}" data-target="${escapeHtml(primary.target || "overview")}" ${primary.queue_type ? `data-queue-type="${escapeHtml(primary.queue_type)}"` : ""} ${primary.item_id ? `data-item-id="${escapeHtml(primary.item_id)}"` : ""}>Do this now</button>`
-                : `<button class="btn-ledger" type="button" data-command-action="create-case"><span class="nav-glyph">+</span> Add Case</button>`;
+            const actionButton = primary.target === "document-inbox"
+                ? `<button class="btn-ledger" type="button" data-command-action="open-target" data-target="document-inbox" ${primary.item_id ? `data-item-id="${escapeHtml(primary.item_id)}"` : ""}>Review source</button>`
+                : cases.length
+                    ? `<button class="btn-ledger" type="button" data-command-action="open-target" data-case-id="${escapeHtml(primaryCaseId)}" data-target="${escapeHtml(primary.target || "overview")}" ${primary.queue_type ? `data-queue-type="${escapeHtml(primary.queue_type)}"` : ""} ${primary.item_id ? `data-item-id="${escapeHtml(primary.item_id)}"` : ""}>Do this now</button>`
+                    : `<button class="btn-ledger" type="button" data-command-action="create-case"><span class="nav-glyph">+</span> Add Case</button>`;
             const secondaryButtons = cases.length ? `
                 <button class="btn-secondary-ledger guided-depth" type="button" data-command-action="open-target" data-case-id="${escapeHtml(primaryCaseId)}" data-target="documents">Add evidence</button>
                 <button class="btn-secondary-ledger guided-depth" type="button" data-command-action="open-target" data-case-id="${escapeHtml(primaryCaseId)}" data-target="review">Review queue</button>
@@ -4092,7 +4608,14 @@
                 ...(state.pending_approvals || []).map((item) => ({ title: item.action, body: item.reason || "Approval required before action.", type: "approval" })),
                 ...(state.contradictions || []).map((item) => ({ title: item.title, body: item.description || "Potential contradiction needs review.", type: "contradiction" })),
                 ...(state.missing_evidence || []).map((item) => ({ title: item.title, body: item.suggested_action || item.description || "Evidence is missing for a claim or case fact.", type: "missing evidence" })),
-                ...(state.open_loops || []).map((item) => ({ title: item.title, body: item.next_action || item.description || "Open loop needs attention.", type: "open loop" }))
+                ...(state.open_loops || []).map((item) => ({ title: item.title, body: item.next_action || item.description || "Open loop needs attention.", type: "open loop" })),
+                ...(state.document_inbox || []).map((item) => ({
+                    title: item.title,
+                    body: item.suggested_matches?.[0]?.case_title
+                        ? `Suggested case: ${item.suggested_matches[0].case_title}. Confirm before linking.`
+                        : "Choose the legal case for this source.",
+                    type: "document inbox"
+                }))
             ];
             document.getElementById("reviewCount").textContent = `${items.length} item${items.length === 1 ? "" : "s"}`;
             document.getElementById("reviewList").innerHTML = items.length ? items.slice(0, 8).map((item) => `
@@ -4102,6 +4625,176 @@
                     <p>${escapeHtml(item.body)}</p>
                 </article>
             `).join("") : `<div class="empty-state">Nothing is waiting for review.</div>`;
+        }
+
+        function renderDocumentInbox(items = [], cases = []) {
+            const count = document.getElementById("documentInboxCount");
+            const container = document.getElementById("documentInboxItems");
+            if (!count || !container) return;
+            count.textContent = `${items.length} waiting`;
+            container.innerHTML = items.length ? items.map((item) => {
+                const suggested = item.suggested_matches?.[0] || null;
+                const suggestedId = Number(suggested?.case_id || item.suggested_case_id || 0);
+                const selectedId = cases.some((caseItem) => Number(caseItem.case_id) === suggestedId)
+                    ? suggestedId
+                    : Number(selectedCaseId || cases[0]?.case_id || 0);
+                const caseOptions = cases.map((caseItem) => `
+                    <option value="${escapeHtml(caseItem.case_id)}" ${Number(caseItem.case_id) === selectedId ? "selected" : ""}>${escapeHtml(caseItem.title)}</option>
+                `).join("");
+                const reasons = suggested?.reasons?.length
+                    ? suggested.reasons.join("; ")
+                    : "No reliable case match yet. Choose the case manually.";
+                return `
+                    <article class="document-inbox-item" data-inbox-item-id="${escapeHtml(item.id)}">
+                        <div class="document-inbox-main">
+                            <div class="document-inbox-meta">
+                                <span class="tag">${escapeHtml(item.source_type || "source")}</span>
+                                <span class="tag">${escapeHtml(item.document_type || "unknown")}</span>
+                                <span class="tag">${escapeHtml(item.word_count || 0)} words</span>
+                                ${item.confidentiality_level !== "normal" ? `<span class="tag orange">${escapeHtml(item.confidentiality_level)}</span>` : ""}
+                            </div>
+                            <strong>${escapeHtml(item.title || item.original_filename || "Untitled source")}</strong>
+                            <p class="document-inbox-preview">${escapeHtml(item.summary || item.text_preview || "No readable text was extracted. The original local source is preserved.")}</p>
+                            <div class="document-inbox-meta">
+                                ${item.sender ? `<span>From ${escapeHtml(item.sender)}</span>` : ""}
+                                ${item.date_on_document ? `<span>${escapeHtml(item.date_on_document)}</span>` : ""}
+                                <span>${escapeHtml(String(item.content_hash || "").slice(0, 12))}</span>
+                            </div>
+                        </div>
+                        <div class="document-inbox-match">
+                            <div class="document-inbox-meta">
+                                <span class="tag ${suggested?.confidence === "high" ? "" : "orange"}">${escapeHtml(suggested?.confidence || "unmatched")}</span>
+                                ${suggested ? `<span class="muted">${escapeHtml(Math.round(Number(suggested.score || 0)))}/100 match score</span>` : ""}
+                            </div>
+                            <strong>${escapeHtml(suggested?.case_title || "Choose a case")}</strong>
+                            <p class="document-inbox-reasons">${escapeHtml(reasons)}</p>
+                            ${cases.length ? `
+                                <label class="input-field">
+                                    <span>Confirmed case</span>
+                                    <select class="control document-inbox-case-select" aria-label="Case for ${escapeHtml(item.title || "inbox source")}">${caseOptions}</select>
+                                </label>
+                                <div class="document-inbox-actions">
+                                    <button class="btn-ledger" type="button" data-inbox-link="${escapeHtml(item.id)}">Link to Case</button>
+                                    <button class="btn-secondary-ledger" type="button" data-inbox-dismiss="${escapeHtml(item.id)}">Dismiss</button>
+                                </div>
+                            ` : `
+                                <button class="btn-ledger" type="button" data-command-action="create-case">Create a Case</button>
+                                <button class="btn-secondary-ledger" type="button" data-inbox-dismiss="${escapeHtml(item.id)}">Dismiss</button>
+                            `}
+                        </div>
+                    </article>
+                `;
+            }).join("") : `<div class="empty-state">No unassigned documents.</div>`;
+
+            container.querySelectorAll("[data-inbox-link]").forEach((button) => {
+                button.addEventListener("click", () => linkDocumentInboxSource(button).catch((error) => showToast(error.message)));
+            });
+            container.querySelectorAll("[data-inbox-dismiss]").forEach((button) => {
+                button.addEventListener("click", () => dismissDocumentInboxSource(button).catch((error) => showToast(error.message)));
+            });
+            wireCommandActions();
+        }
+
+        function openDocumentInbox({ focusForm = false } = {}) {
+            setDepth("guided");
+            document.getElementById("document-inbox")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            if (focusForm) {
+                const form = document.getElementById("documentInboxForm");
+                if (form) form.hidden = false;
+                window.setTimeout(() => document.getElementById("documentInboxTitle")?.focus(), 180);
+            }
+        }
+
+        async function stageDocumentInboxSource() {
+            const fileInput = document.getElementById("documentInboxFile");
+            const file = fileInput?.files?.[0];
+            const text = document.getElementById("documentInboxText")?.value.trim() || "";
+            const title = document.getElementById("documentInboxTitle")?.value.trim() || file?.name || "";
+            const selectedSourceType = document.getElementById("documentInboxSourceType")?.value || "manual_text";
+            const sourceType = file && selectedSourceType === "manual_text" ? "manual_upload" : selectedSourceType;
+            const confidentiality = document.getElementById("documentInboxConfidentiality")?.value || "normal";
+            const status = document.getElementById("documentInboxStageStatus");
+            if (!file && !text) return showToast("Choose a local file or paste source text.");
+            const progress = startAnalysisProgress(status, {
+                label: "Reading source and matching cases",
+                words: file ? Math.max(80, Math.round((file.size || 0) / 6)) : wordCount(text),
+                location: "kept local in the Document Inbox until you confirm a case"
+            });
+            let response;
+            if (file) {
+                const formData = new FormData();
+                formData.append("file", file);
+                formData.append("title", title || file.name);
+                formData.append("source_type", sourceType);
+                formData.append("confidentiality_level", confidentiality);
+                response = await apiFetch("/api/document-inbox/upload", { method: "POST", body: formData });
+            } else {
+                response = await apiFetch("/api/document-inbox", {
+                    method: "POST",
+                    body: JSON.stringify({ title, source_type: sourceType, confidentiality_level: confidentiality, extracted_text: text })
+                });
+            }
+            const item = response.item || {};
+            const suggestion = item.suggested_matches?.[0];
+            if (item.status === "linked") {
+                progress.complete("This exact source is already linked in the ledger.");
+                showToast("This exact source is already linked to a case.");
+            } else {
+                progress.complete(suggestion
+                    ? `Source staged. Review the ${Math.round(Number(suggestion.score || 0))}/100 match score for ${suggestion.case_title}.`
+                    : "Source staged. Choose its case before analysis enters a legal ledger.");
+                showToast(suggestion ? `Likely case: ${suggestion.case_title}. Confirm before linking.` : "Source staged for case review.");
+            }
+            if (fileInput) fileInput.value = "";
+            const textInput = document.getElementById("documentInboxText");
+            const titleInput = document.getElementById("documentInboxTitle");
+            if (textInput) textInput.value = "";
+            if (titleInput) titleInput.value = "";
+            await loadCommandCenter();
+            await refreshLedgerSearchIfActive();
+            openDocumentInbox();
+        }
+
+        async function linkDocumentInboxSource(button) {
+            const row = button.closest("[data-inbox-item-id]");
+            const caseId = Number(row?.querySelector(".document-inbox-case-select")?.value || 0);
+            const itemId = Number(button.dataset.inboxLink || row?.dataset.inboxItemId || 0);
+            if (!itemId || !caseId) return showToast("Choose the confirmed case first.");
+            button.disabled = true;
+            button.textContent = "Linking...";
+            try {
+                const response = await apiFetch(`/api/document-inbox/${itemId}/link`, {
+                    method: "POST",
+                    body: JSON.stringify({ case_id: caseId })
+                });
+                const result = analysisResultParts(response);
+                showToast(`Source linked. ${result.timelineCount + result.reviewCount} review item${result.timelineCount + result.reviewCount === 1 ? "" : "s"} prepared.`);
+                await loadCommandCenter();
+                await refreshLedgerSearchIfActive();
+                await loadCaseDetail(caseId);
+                setDepth("guided");
+                activateDetailTab(result.reviewCount ? "review" : result.timelineCount ? "timeline" : "documents");
+                document.getElementById("caseDetailPanel")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            } finally {
+                const refreshed = document.querySelector(`[data-inbox-link="${itemId}"]`);
+                if (refreshed) {
+                    refreshed.disabled = false;
+                    refreshed.textContent = "Link to Case";
+                }
+            }
+        }
+
+        async function dismissDocumentInboxSource(button) {
+            const itemId = Number(button.dataset.inboxDismiss || 0);
+            if (!itemId) return;
+            await apiFetch(`/api/document-inbox/${itemId}`, {
+                method: "PATCH",
+                body: JSON.stringify({ action: "dismiss" })
+            });
+            showToast("Source removed from the review queue; its local record was retained.");
+            await loadCommandCenter();
+            await refreshLedgerSearchIfActive();
+            openDocumentInbox();
         }
 
         function renderEmptyCaseOnboarding() {
@@ -4157,7 +4850,7 @@
                         <strong>${escapeHtml(item.title || "Untitled match")}</strong>
                         <p>${escapeHtml(item.snippet || item.case_title || "Open this ledger item.")}</p>
                         <div class="ledger-search-meta">
-                            <span>Case ${escapeHtml(item.case_id || "")}</span>
+                            <span>${item.case_id ? `Case ${escapeHtml(item.case_id)}` : "Unassigned source"}</span>
                             ${item.case_title ? `<span>${escapeHtml(item.case_title)}</span>` : ""}
                             ${item.target ? `<span>${escapeHtml(searchTypeLabel(item.target))}</span>` : ""}
                         </div>
@@ -4201,12 +4894,21 @@
             }, 420);
         }
 
+        async function refreshLedgerSearchIfActive() {
+            const query = document.getElementById("ledgerSearchInput")?.value.trim() || "";
+            if (query) await runLedgerSearch();
+        }
+
         function documentById(documentId) {
             return (detailState.documents || []).find((doc) => String(doc.document_id || doc.id) === String(documentId));
         }
 
         function documentTitle(doc = {}, fallback = "Source document") {
             return doc.title || doc.original_filename || (doc.document_id || doc.id ? `Document ${doc.document_id || doc.id}` : fallback);
+        }
+
+        function documentHasReadableText(doc = {}) {
+            return Boolean(String(doc.extracted_text || doc.ocr_text || "").trim());
         }
 
         function evidenceLinksFor(targetType, targetId) {
@@ -4230,16 +4932,17 @@
             `;
         }
 
-        function evidenceSourceButton(targetType, targetId, fallbackDocumentId = "") {
+        function evidenceSourceButton(targetType, targetId, fallbackDocumentId = "", fallbackSnippet = "") {
             const link = primaryEvidenceLink(targetType, targetId);
-            return sourceDocumentButton(link?.document_id || fallbackDocumentId);
+            return sourceDocumentButton(link?.document_id || fallbackDocumentId, link?.snippet || fallbackSnippet);
         }
 
-        function sourceDocumentButton(documentId) {
+        function sourceDocumentButton(documentId, snippet = "") {
             if (!documentId) return "";
             const doc = documentById(documentId);
             const label = doc ? `Preview source document: ${documentTitle(doc, documentId)}` : `Preview source document ${documentId}`;
-            return `<button class="source-doc-button" type="button" data-doc-id="${escapeHtml(documentId)}" title="${escapeHtml(label)}" aria-label="${escapeHtml(label)}">?</button>`;
+            const passageLabel = snippet ? `${label}; open the cited passage` : label;
+            return `<button class="source-doc-button" type="button" data-doc-id="${escapeHtml(documentId)}" data-doc-snippet="${escapeHtml(snippet)}" title="${escapeHtml(passageLabel)}" aria-label="${escapeHtml(passageLabel)}">?</button>`;
         }
 
         function eventStatus(event) {
@@ -4257,10 +4960,49 @@
             return (detailState.timeline || []).filter((event) => includeRejected || eventStatus(event) !== "rejected");
         }
 
+        function caseAnalysisTimelineProposals() {
+            const run = detailState.caseAnalysis?.latest;
+            const suggestions = run?.content?.timeline_suggestions || [];
+            const reviewItems = new Map((run?.review_items || []).map((item) => [item.finding_key, item]));
+            return suggestions.map((suggestion, index) => {
+                const reviewItem = reviewItems.get(`timeline_suggestion:${index}`);
+                if (!reviewItem || reviewItem.status !== "needs_review") return null;
+                const source = (suggestion.sources || [])[0] || {};
+                return {
+                    id: `analysis-${reviewItem.id}`,
+                    analysis_review_id: reviewItem.id,
+                    event_date: suggestion.event_date || "",
+                    date: suggestion.event_date || "",
+                    title: suggestion.title || "Cited timeline proposal",
+                    description: suggestion.description || "Review the cited passage before confirming this event.",
+                    actor: suggestion.actor || "",
+                    action: suggestion.action || "",
+                    affected_party: suggestion.affected_party || "",
+                    event_kind: suggestion.event_kind || "event",
+                    created_from_document_id: source.document_id || "",
+                    evidence_quote: source.source_quote || "",
+                    source_refs: suggestion.sources || [],
+                    review_status: "needs_review",
+                    user_confirmed: false,
+                    _analysisProposal: true
+                };
+            }).filter(Boolean);
+        }
+
+        function timelineDisplayEvents(includeRejected = false) {
+            return [...timelineEvents(includeRejected), ...caseAnalysisTimelineProposals()];
+        }
+
         function filteredTimelineEvents() {
-            const events = timelineEvents(timelineStatusFilter === "rejected");
-            if (timelineStatusFilter === "all") return events.filter((event) => eventStatus(event) !== "rejected");
-            return events.filter((event) => eventStatus(event) === timelineStatusFilter);
+            const events = timelineDisplayEvents(timelineStatusFilter === "rejected");
+            return events.filter((event) => {
+                const statusMatch = timelineStatusFilter === "all"
+                    ? eventStatus(event) !== "rejected"
+                    : eventStatus(event) === timelineStatusFilter;
+                const actorMatch = timelineActorFilter === "all" || eventActor(event) === timelineActorFilter;
+                const kindMatch = timelineKindFilter === "all" || eventKind(event) === timelineKindFilter;
+                return statusMatch && actorMatch && kindMatch;
+            });
         }
 
         function eventSourceLine(event) {
@@ -4272,6 +5014,7 @@
         }
 
         function eventActor(event) {
+            if (event.actor) return event.actor;
             const doc = documentById(event.created_from_document_id);
             if (doc?.sender) return doc.sender;
             const c = detailState.case || {};
@@ -4279,6 +5022,21 @@
             const firstParty = (c.parties || [])[0];
             if (firstParty?.name) return firstParty.name;
             return "Unknown party";
+        }
+
+        function eventKind(event) {
+            return event.event_kind || "event";
+        }
+
+        function eventFactLabel(event) {
+            const actor = eventActor(event);
+            const action = event.action && event.action !== "documented" ? event.action : "documented";
+            const affected = event.affected_party ? ` for ${event.affected_party}` : "";
+            return `${actor} ${action}${affected}`;
+        }
+
+        function timelineFacetOptions(events, getter) {
+            return [...new Set(events.map(getter).filter(Boolean))].sort((left, right) => left.localeCompare(right));
         }
 
         function eventActionText(event) {
@@ -4309,15 +5067,15 @@
             const sorted = sortedTimeline(events);
             const first = sorted.find((event) => timelineDateValue(event));
             const last = [...sorted].reverse().find((event) => timelineDateValue(event));
-            const sourceDocs = new Set(sorted.map((event) => event.created_from_document_id).filter(Boolean));
+            const sourceDocs = new Set(sorted.map((event) => event.created_from_document_id).filter(Boolean).map(String));
             const needsReview = sorted.filter((event) => eventStatus(event) === "needs_review").length;
             const lead = sorted[0];
             const close = sorted.length > 1 ? sorted[sorted.length - 1] : null;
             const leadText = lead
-                ? `${eventActor(lead)}: ${eventActionText(lead)}`
+                ? `${eventFactLabel(lead)}: ${eventActionText(lead)}`
                 : "No source-linked chronology is visible under this filter.";
             const closeText = close
-                ? ` Later: ${eventActor(close)}: ${eventActionText(close)}`
+                ? ` Later: ${eventFactLabel(close)}: ${eventActionText(close)}`
                 : "";
             return {
                 firstDate: timelineDateValue(first) || "undated",
@@ -4349,7 +5107,7 @@
                     <div class="timeline-source-card guided-depth">
                         <div>
                             <strong>Source coverage</strong>
-                            <p>${escapeHtml(counts.all || 0)} event${counts.all === 1 ? "" : "s"} in the ledger, ${escapeHtml(counts.confirmed || 0)} confirmed, ${escapeHtml(counts.needs_review || 0)} waiting for Robert.</p>
+                            <p>${escapeHtml(counts.all || 0)} visible timeline entr${counts.all === 1 ? "y" : "ies"}, ${escapeHtml(counts.confirmed || 0)} confirmed, ${escapeHtml(counts.needs_review || 0)} waiting for Robert.</p>
                         </div>
                         <button class="btn-secondary-ledger" type="button" data-jump-tab="evidence">Inspect source links</button>
                     </div>
@@ -4363,17 +5121,18 @@
                 <article class="timeline-story-event ${eventStatusClass(event)}" data-event-id="${escapeHtml(event.id)}">
                     <span class="timeline-story-date">${escapeHtml(event.event_date || event.date || "undated")}</span>
                     <div class="timeline-story-main">
-                        <strong>${escapeHtml(eventActor(event))} - ${escapeHtml(event.title || "Untitled event")}</strong>
+                        <strong>${escapeHtml(eventFactLabel(event))}</strong>
                         <p>${escapeHtml(eventActionText(event))}</p>
                         <div class="timeline-story-meta">
+                            <span class="tag">${escapeHtml(eventKind(event))}</span>
                             <span class="tag ${status === "needs_review" ? "orange" : ""}">${escapeHtml(status)}</span>
                             <span class="timeline-story-source">${escapeHtml(eventSourceTitle(event))}</span>
-                            ${evidenceSourceButton("event", event.id, event.created_from_document_id)}
+                            ${evidenceSourceButton("event", event.id, event.created_from_document_id, event.evidence_quote)}
                         </div>
                         ${evidenceSnippet("event", event.id)}
                     </div>
                     <div class="button-row">
-                        ${timelineReviewButtons(status, true)}
+                        ${timelineReviewButtons(status, true, event)}
                     </div>
                 </article>
             `;
@@ -4386,22 +5145,30 @@
                     <span class="timeline-card-date">${escapeHtml(event.event_date || event.date || "undated")}</span>
                     <div>
                         <div class="record-heading">
-                            <strong>${escapeHtml(eventActor(event))} - ${escapeHtml(event.title || "Untitled event")}</strong>
-                            ${evidenceSourceButton("event", event.id, event.created_from_document_id)}
+                            <strong>${escapeHtml(eventFactLabel(event))}</strong>
+                            ${evidenceSourceButton("event", event.id, event.created_from_document_id, event.evidence_quote)}
                         </div>
                         <p>${escapeHtml(eventActionText(event))}</p>
+                        <p class="muted">${escapeHtml(eventKind(event))} - ${escapeHtml(event.title || "Untitled event")}</p>
                         ${evidenceSnippet("event", event.id)}
                     </div>
                     <p class="timeline-source-line">${escapeHtml(eventSourceLine(event))}</p>
                     <div class="timeline-card-footer">
                         <span class="tag ${status === "needs_review" ? "orange" : ""}">${escapeHtml(status)}</span>
-                        ${timelineReviewButtons(status, compact)}
+                        ${timelineReviewButtons(status, compact, event)}
                     </div>
                 </article>
             `;
         }
 
-        function timelineReviewButtons(status, compact = false) {
+        function timelineReviewButtons(status, compact = false, event = {}) {
+            if (event._analysisProposal) {
+                return `
+                    <button class="btn-ledger analysis-review-action" type="button" data-analysis-review-id="${escapeHtml(event.analysis_review_id)}" data-analysis-action="confirm_timeline">Confirm event</button>
+                    <button class="btn-secondary-ledger analysis-review-action guided-depth" type="button" data-analysis-review-id="${escapeHtml(event.analysis_review_id)}" data-analysis-action="timeline">Prepare for edit</button>
+                    ${compact ? `<button class="btn-secondary-ledger guided-depth" type="button" data-jump-tab="timeline">Inspect</button>` : `<button class="btn-secondary-ledger analysis-review-action guided-depth" type="button" data-analysis-review-id="${escapeHtml(event.analysis_review_id)}" data-analysis-action="dismiss">Dismiss</button>`}
+                `;
+            }
             if (status === "needs_review") {
                 return `
                     <button class="btn-ledger timeline-approve" type="button">Confirm</button>
@@ -4430,6 +5197,7 @@
             const timelineSuggestion = (detailState.timeline || []).find((event) => event.review_status === "needs_review");
             const evidenceLink = (detailState.evidenceLinks || []).find(evidenceLinkNeedsReview);
             const deadline = (detailState.deadlines || []).find((item) => item.status !== "resolved");
+            const obligation = (detailState.obligations || []).find((item) => !["resolved", "dismissed"].includes(item.status) && !item.user_confirmed);
             const approval = (detailState.approvals || []).find((item) => item.status === "pending");
             const waitingDraft = (detailState.drafts || []).find((item) => item.status === "waiting_approval");
             const missing = (detailState.missingEvidence || []).find((item) => item.status !== "resolved");
@@ -4437,17 +5205,19 @@
             if (waitingDraft) return { tab: "drafts", title: "Draft waiting approval", body: waitingDraft.title || "Review this generated draft before external use.", depth: "guided" };
             if (approval) return { tab: "review", title: "Approval waiting", body: approval.reason || approval.action || "Review this high-risk action before anything external happens.", queueType: "approval", itemId: approval.id };
             if (deadline) return { tab: "review", title: deadline.title || "Deadline needs review", body: `${deadline.due_date || "No date"} - ${deadline.description || "Confirm or resolve this deadline."}`, queueType: "deadline", itemId: deadline.id };
+            if (obligation) return { tab: "review", title: obligation.title || "Obligation needs review", body: obligation.description || obligation.source_quote || "Confirm who must do what before relying on this duty.", queueType: "obligation", itemId: obligation.id };
             if (timelineSuggestion) return { tab: "timeline", title: "Timeline suggestion ready", body: timelineSuggestion.title || "Review the extracted event and its source.", queueType: "timeline", itemId: timelineSuggestion.id };
             if (evidenceLink) return { tab: "evidence", title: "Source link needs review", body: evidenceLink.snippet || `${evidenceLink.relationship || "supports"} ${evidenceLink.target_type || "item"} ${evidenceLink.target_id || ""}`, queueType: "evidence", itemId: evidenceLink.id };
             if (missing) return { tab: "review", title: missing.title || "Evidence gap", body: missing.suggested_action || missing.description || "Review missing evidence.", queueType: "gap", itemId: missing.id };
             if (loop) return { tab: "review", title: loop.title || "Open loop", body: loop.next_action || loop.description || "Resolve this open action.", queueType: "loop", itemId: loop.id };
-            return { tab: "documents", title: "Add or review evidence", body: "Upload a document to build the timeline, evidence links, deadlines, and open loops." };
+            return { tab: "documents", title: "Add or review evidence", body: "Upload a document to build the timeline, evidence links, deadlines, obligations, and open loops." };
         }
 
         function queueFilterFor(queueType = "") {
             const map = {
                 approval: "approval",
                 deadline: "deadline",
+                obligation: "obligation",
                 contradiction: "contradiction",
                 gap: "gap",
                 missing_evidence: "gap",
@@ -4464,6 +5234,7 @@
             const selectors = {
                 approval: itemId ? `.approval-row[data-approval-id="${id}"]` : ".approval-row",
                 deadline: itemId ? `.deadline-row[data-deadline-id="${id}"]` : ".deadline-row",
+                obligation: itemId ? `.obligation-row[data-obligation-id="${id}"]` : ".obligation-row",
                 contradiction: itemId ? `.contradiction-row[data-contradiction-id="${id}"]` : ".contradiction-row",
                 gap: itemId ? `.missing-evidence-row[data-warning-id="${id}"]` : ".missing-evidence-row",
                 missing_evidence: itemId ? `.missing-evidence-row[data-warning-id="${id}"]` : ".missing-evidence-row",
@@ -4494,6 +5265,7 @@
         function queueTargetType(queueType = "") {
             const map = {
                 deadline: "deadline",
+                obligation: "obligation",
                 loop: "open_loop",
                 timeline: "event",
                 claim: "claim",
@@ -4629,6 +5401,22 @@
             return "needs review";
         }
 
+        function claimRelationshipSelect(link = {}) {
+            if (link.target_type !== "claim") return "";
+            const selected = ["supports", "disputes", "context"].includes(link.relationship) ? link.relationship : "";
+            return `
+                <label class="input-field evidence-relation-select">
+                    <span>How this source relates</span>
+                    <select class="control evidence-link-relationship">
+                        <option value="" ${selected ? "" : "selected"}>Choose before confirming</option>
+                        <option value="supports" ${selected === "supports" ? "selected" : ""}>Supports the claim</option>
+                        <option value="disputes" ${selected === "disputes" ? "selected" : ""}>Disputes the claim</option>
+                        <option value="context" ${selected === "context" ? "selected" : ""}>Context only</option>
+                    </select>
+                </label>
+            `;
+        }
+
         function normalizeBackendReviewQueueItem(item = {}) {
             const source = item.source && typeof item.source === "object" ? item.source : {};
             const queueType = item.queue_type || item.queueType || source.queue_type || "";
@@ -4661,6 +5449,9 @@
                 ...(detailState.deadlines || [])
                     .filter((item) => item.status !== "resolved")
                     .map((item) => ({ ...item, queueType: "deadline", tab: "review", label: item.title, body: `${item.due_date || "No date"} - ${item.description || item.status}` })),
+                ...(detailState.obligations || [])
+                    .filter((item) => !["resolved", "dismissed"].includes(item.status) && !item.user_confirmed)
+                    .map((item) => ({ ...item, queueType: "obligation", tab: "review", label: item.title, body: item.description || item.source_quote || "Source-linked obligation needs confirmation." })),
                 ...(detailState.timeline || [])
                     .filter((item) => eventStatus(item) === "needs_review")
                     .map((item) => ({ ...item, queueType: "timeline", tab: "timeline", label: item.title, body: item.description || item.summary || "Timeline suggestion needs confirmation." })),
@@ -4868,7 +5659,7 @@
                     : { kicker: "evidence", label: "Add first source document", body: "Start the papertrail from a document, email export, letter, or pasted text.", tab: "documents" }
             ];
             if (queue.length) {
-                commands.push({ kicker: "review", label: `Work ${queue.length} review item${queue.length === 1 ? "" : "s"}`, body: "Resolve approvals, deadlines, gaps, contradictions, and open loops from one queue.", tab: "review", depth: "guided" });
+                commands.push({ kicker: "review", label: `Work ${queue.length} review item${queue.length === 1 ? "" : "s"}`, body: "Resolve approvals, deadlines, obligations, gaps, contradictions, and open loops from one queue.", tab: "review", depth: "guided" });
             } else if (timelineNeedsReview) {
                 commands.push({ kicker: "timeline", label: "Review suggested events", body: "Confirm or reject extracted events before they become part of the chronology.", tab: "timeline", depth: "guided" });
             } else {
@@ -4907,7 +5698,8 @@
             const items = [
                 { action: "set-depth", kicker: "layout", label: "Focus layout", body: "Return to the minimal case view.", depth: "simple" },
                 { action: "set-depth", kicker: "layout", label: "Guided layout", body: "Open documents, timeline, claims, and review controls.", depth: "guided" },
-                { action: "set-depth", kicker: "layout", label: "Expert layout", body: "Expose papertrail, bundle, approvals, and audit controls.", depth: "expert" }
+                { action: "set-depth", kicker: "layout", label: "Expert layout", body: "Expose papertrail, bundle, approvals, and audit controls.", depth: "expert" },
+                { action: "open-inbox", kicker: "source", label: "Document inbox", body: "Stage or classify sources before they enter a case.", depth: "guided" }
             ];
             if (!cases.length) {
                 items.push({ action: "create-case", kicker: "case", label: "Create ledger case", body: "Start the first persisted legal case record.", depth: "guided" });
@@ -4942,7 +5734,7 @@
                     { tab: "timeline", kicker: "chronology", label: "Timeline builder", body: "Confirm who said or did what and when.", depth: "guided" },
                     { tab: "claims", kicker: "position", label: "Claims and support", body: "Review factual positions, source links, and unsupported gaps.", depth: "guided" },
                     { tab: "evidence", kicker: "source links", label: "Evidence links", body: "Confirm or reject source links before treating them as support.", depth: "guided" },
-                    { tab: "review", kicker: "review", label: "Review workbench", body: "Resolve approvals, deadlines, gaps, contradictions, and open loops.", depth: "guided" },
+                    { tab: "review", kicker: "review", label: "Review workbench", body: "Resolve approvals, deadlines, obligations, gaps, contradictions, and open loops.", depth: "guided" },
                     { tab: "drafts", kicker: "drafts", label: "Drafts and formal letters", body: "Review generated summaries, formal correspondence, and approval state.", depth: "guided" },
                     { tab: "papertrail", kicker: "graph", label: "Papertrail graph", body: "Inspect the source-linked graph of documents, events, claims, and risks.", depth: "expert" },
                     { tab: "bundle", kicker: "export", label: "Internal case bundle", body: "Review lawyer-ready material before any external sharing approval.", depth: "expert" },
@@ -5009,6 +5801,10 @@
                 document.getElementById("case-intake")?.scrollIntoView({ behavior: "smooth", block: "start" });
                 return;
             }
+            if (item.action === "open-inbox") {
+                openDocumentInbox({ focusForm: true });
+                return;
+            }
             if (item.caseId) {
                 if (item.depth) setDepth(item.depth);
                 await loadCaseDetail(Number(item.caseId));
@@ -5045,7 +5841,7 @@
         function focusBriefItems(focus) {
             const documents = detailState.documents?.length || 0;
             const sourceLinks = detailState.operatingState?.traceability?.source_links ?? (detailState.evidenceLinks?.length || 0);
-            const timeline = timelineEvents();
+            const timeline = timelineDisplayEvents();
             const reviewItems = reviewQueueItems().length;
             const suggested = timeline.filter((event) => eventStatus(event) === "needs_review").length;
             return [
@@ -5062,7 +5858,7 @@
                 {
                     label: "Timeline",
                     value: `${timeline.length} event${timeline.length === 1 ? "" : "s"}`,
-                    body: suggested ? `${suggested} event${suggested === 1 ? "" : "s"} need confirmation.` : "Chronology is ready for review."
+                    body: suggested ? `${suggested} cited event${suggested === 1 ? "" : "s"} await confirmation.` : "Chronology is ready for review."
                 },
                 {
                     label: "Review",
@@ -5096,7 +5892,7 @@
         }
 
         function renderFocusChronology(limit = 3) {
-            const events = sortedTimeline(timelineEvents()).slice(0, limit);
+            const events = sortedTimeline(timelineDisplayEvents()).slice(0, limit);
             return `
                 <section class="focus-chronology" aria-label="Source-linked chronology preview">
                     <div class="focus-chronology-header">
@@ -5116,13 +5912,14 @@
                                         <div class="focus-event-main">
                                             <div class="record-heading">
                                                 <strong>${escapeHtml(eventActor(event))} - ${escapeHtml(event.title || "Timeline event")}</strong>
-                                                ${evidenceSourceButton("event", event.id, event.created_from_document_id)}
+                                                ${evidenceSourceButton("event", event.id, event.created_from_document_id, event.evidence_quote)}
                                             </div>
                                             <p>${escapeHtml(eventActionText(event))}</p>
                                             <div class="focus-event-meta">
-                                                <span class="tag ${status === "needs_review" ? "orange" : ""}">${escapeHtml(status)}</span>
+                                                <span class="tag ${status === "needs_review" ? "orange" : ""}">${escapeHtml(event._analysisProposal ? "cited proposal" : status)}</span>
                                                 <span>${escapeHtml(eventSourceTitle(event))}</span>
                                             </div>
+                                            ${event._analysisProposal ? `<div class="button-row">${timelineReviewButtons(status, true, event)}</div>` : ""}
                                         </div>
                                     </article>
                                 `;
@@ -5214,7 +6011,7 @@
                 : {
                     kicker: "review",
                     title: "Review queue clear",
-                    body: "No approvals, deadlines, contradictions, gaps, or open loops are waiting.",
+                    body: "No approvals, deadlines, obligations, contradictions, gaps, or open loops are waiting.",
                     tab: "review",
                     depth: "guided"
                 };
@@ -5358,7 +6155,7 @@
                     label: "Guided",
                     metric: `${queue} review item${queue === 1 ? "" : "s"}`,
                     progress: Math.max(12, Math.min(100, readiness + (queue ? 8 : 0))),
-                    body: laneDetail("guided") || "Documents, chronology, claims, gaps, deadlines, and open loops.",
+                    body: laneDetail("guided") || "Documents, chronology, claims, gaps, deadlines, obligations, and open loops.",
                     active: activeDepth === "guided"
                 },
                 {
@@ -5424,15 +6221,17 @@
             const counts = response.artifact_counts || {};
             const timelineCount = response.timeline_suggestions?.length || counts.timeline_suggestions || 0;
             const deadlineCount = response.deadline_suggestions?.length || counts.deadline_suggestions || 0;
+            const obligationCount = response.obligation_suggestions?.length || counts.obligation_suggestions || 0;
             const loopCount = response.open_loop_suggestions?.length || counts.open_loop_suggestions || 0;
             const claimCount = response.claim_suggestions?.length || counts.claim_suggestions || 0;
             const contradictionCount = response.contradiction_suggestions?.length || counts.contradiction_suggestions || 0;
             const missingCount = response.missing_evidence_suggestions?.length || counts.missing_evidence_suggestions || 0;
             const evidenceLinkCount = response.evidence_links_created || response.evidence_links?.length || counts.evidence_links || 0;
-            const reviewCount = deadlineCount + loopCount + claimCount + contradictionCount + missingCount;
+            const reviewCount = deadlineCount + obligationCount + loopCount + claimCount + contradictionCount + missingCount;
             const parts = [
                 `${timelineCount} timeline item${timelineCount === 1 ? "" : "s"}`,
                 `${deadlineCount} deadline${deadlineCount === 1 ? "" : "s"}`,
+                `${obligationCount} obligation${obligationCount === 1 ? "" : "s"}`,
                 `${loopCount} action loop${loopCount === 1 ? "" : "s"}`,
                 `${claimCount} claim suggestion${claimCount === 1 ? "" : "s"}`,
                 `${contradictionCount} contradiction${contradictionCount === 1 ? "" : "s"}`,
@@ -5589,7 +6388,7 @@
                 {
                     kicker: "case",
                     title: reviewItems ? "Needs review" : "Case under control",
-                    body: reviewItems ? "Resolve the next approval, deadline, contradiction, gap, or open loop before expanding scope." : "No review queue items are open. Keep collecting sources and confirming the timeline.",
+                    body: reviewItems ? "Resolve the next approval, deadline, obligation, contradiction, gap, or open loop before expanding scope." : "No review queue items are open. Keep collecting sources and confirming the timeline.",
                     count: reviewItems,
                     action: reviewItems ? "Open review" : "View overview",
                     tab: reviewItems ? "review" : "overview",
@@ -5679,6 +6478,7 @@
             const types = [
                 { type: "approval", label: "Approvals" },
                 { type: "deadline", label: "Deadlines" },
+                { type: "obligation", label: "Obligations" },
                 { type: "timeline", label: "Timeline" },
                 { type: "claim", label: "Claims" },
                 { type: "evidence", label: "Sources" },
@@ -5733,6 +6533,37 @@
                             <div class="button-row">
                                 <button class="btn-ledger deadline-confirm" type="button">Confirm</button>
                                 <button class="btn-secondary-ledger deadline-resolve" type="button">Resolve</button>
+                            </div>
+                        </div>
+                    </article>
+                `;
+            }
+            if (item.queueType === "obligation") {
+                return `
+                    <article class="record-row obligation-row" data-obligation-id="${escapeHtml(item.id)}">
+                        <span class="record-kicker">obligation</span>
+                        <div>
+                            <div class="record-heading">
+                                <strong>${escapeHtml(item.label || "Obligation needs review")}</strong>
+                                ${evidenceSourceButton("obligation", item.id, item.source_document_id, item.source_quote)}
+                            </div>
+                            <p>${escapeHtml(item.body || item.source_quote || "Confirm the source-linked duty before relying on it.")}</p>
+                            ${evidenceSnippet("obligation", item.id)}
+                            <p class="muted">Responsible: ${escapeHtml(item.responsible_party || "unassigned")}${item.due_date ? ` · due ${escapeHtml(item.due_date)}` : " · no due date confirmed"} · ${escapeHtml(item.risk_level || "medium")} risk</p>
+                            <details class="source-import-advanced expert-depth">
+                                <summary>Edit obligation details</summary>
+                                <div class="form-grid">
+                                    <label class="input-field"><span>Responsible party</span><input class="control obligation-owner" value="${escapeHtml(item.responsible_party || "unassigned")}"></label>
+                                    <label class="input-field"><span>Due date</span><input class="control obligation-due-date" type="date" value="${escapeHtml(String(item.due_date || "").slice(0, 10))}"></label>
+                                    <label class="input-field"><span>Beneficiary</span><input class="control obligation-beneficiary" value="${escapeHtml(item.beneficiary_party || "")}"></label>
+                                    <label class="input-field"><span>Risk</span><select class="control obligation-risk"><option value="low" ${item.risk_level === "low" ? "selected" : ""}>Low</option><option value="medium" ${!item.risk_level || item.risk_level === "medium" ? "selected" : ""}>Medium</option><option value="high" ${item.risk_level === "high" ? "selected" : ""}>High</option></select></label>
+                                    <button class="btn-secondary-ledger obligation-save" type="button">Save details</button>
+                                </div>
+                            </details>
+                            <div class="button-row">
+                                <button class="btn-ledger obligation-confirm" type="button">Confirm</button>
+                                <button class="btn-secondary-ledger obligation-resolve" type="button">Mark fulfilled</button>
+                                <button class="btn-secondary-ledger obligation-dismiss" type="button">Dismiss</button>
                             </div>
                         </div>
                     </article>
@@ -5801,16 +6632,17 @@
                 const doc = documentById(item.document_id);
                 const sourceLabel = doc ? (doc.title || doc.original_filename || `Document ${item.document_id}`) : `Document ${item.document_id}`;
                 return `
-                    <article class="record-row evidence-link-row" data-evidence-link-id="${escapeHtml(item.id)}">
+                    <article class="record-row evidence-link-row" data-evidence-link-id="${escapeHtml(item.id)}" data-target-type="${escapeHtml(item.target_type)}">
                         <span class="record-kicker">source link</span>
                         <div>
                             <div class="record-heading">
                                 <strong>${escapeHtml(sourceLabel)} -> ${escapeHtml(item.target_type)} ${escapeHtml(item.target_id)}</strong>
-                                ${sourceDocumentButton(item.document_id)}
+                                ${sourceDocumentButton(item.document_id, item.snippet || item.body)}
                             </div>
                             <p>${escapeHtml(item.body)}</p>
-                            <p class="muted">${escapeHtml(item.relationship || "supports")} - ${escapeHtml(item.strength || "medium")} strength - review before treating as support</p>
+                            <p class="muted">${escapeHtml(item.relationship || "needs_review")} - ${escapeHtml(item.strength || "medium")} strength - classify the source relationship before relying on it</p>
                             <div class="button-row">
+                                ${claimRelationshipSelect(item)}
                                 <button class="btn-ledger evidence-link-confirm" type="button">Confirm link</button>
                                 <button class="btn-secondary-ledger evidence-link-reject" type="button">Reject</button>
                                 <button class="btn-secondary-ledger" type="button" data-jump-tab="evidence">Inspect</button>
@@ -5973,6 +6805,119 @@
                             `).join("")}
                         </div>
                     `}
+                    ${compact ? "" : renderCaseWideAnalysis()}
+                </section>
+            `;
+        }
+
+        function renderCaseWideAnalysis() {
+            const run = detailState.caseAnalysis?.latest;
+            const activeJob = (detailState.caseAnalysisJobs || []).find((item) => ["queued", "running"].includes(item.status));
+            const content = run?.content || {};
+            const findings = content.findings || [];
+            const questions = content.review_questions || [];
+            const timelineSuggestions = content.timeline_suggestions || [];
+            const coverage = content.source_coverage || {};
+            const sourceDocuments = run?.source_documents || [];
+            const readableSources = Number(coverage.sources_readable || sourceDocuments.length || 0);
+            const representedSources = Number(coverage.sources_represented || sourceDocuments.filter((item) => Number(item.source_characters_analyzed || 0) > 0).length || readableSources);
+            const fullyReadSources = Number(coverage.sources_fully_read || sourceDocuments.filter((item) => !item.source_was_truncated).length || 0);
+            const partiallyReadSources = Math.max(0, Number(coverage.sources_partially_read ?? Math.max(0, readableSources - fullyReadSources)));
+            const charactersAnalyzed = Number(coverage.characters_analyzed || content.source_characters_analyzed || 0);
+            const charactersTotal = Number(coverage.characters_total || sourceDocuments.reduce((total, item) => total + Number(item.source_characters_total || 0), 0));
+            const coveragePercent = coverage.coverage_percent ?? (charactersTotal ? Math.round((charactersAnalyzed / charactersTotal) * 1000) / 10 : null);
+            const coverageSummary = readableSources
+                ? `${representedSources} of ${readableSources} readable source${readableSources === 1 ? "" : "s"} represented; ${fullyReadSources} fully read${partiallyReadSources ? `, ${partiallyReadSources} partial` : ""}.`
+                : "No readable source coverage was recorded for this historical run.";
+            const coverageDetail = charactersTotal
+                ? `${charactersAnalyzed.toLocaleString()} of ${charactersTotal.toLocaleString()} normalized source characters read (${coveragePercent}% coverage).`
+                : "This run predates source-coverage tracking.";
+            const sourceButton = (source) => sourceDocumentButton(source?.document_id, source?.source_quote || "");
+            const reviewItems = new Map((run?.review_items || []).map((item) => [item.finding_key, item]));
+            const reviewControls = (reviewItem, type, sourceCount) => {
+                if (!reviewItem) return `<p class="muted">Needs review</p>`;
+                if (reviewItem.status === "converted") {
+                    const targetEvent = reviewItem.target_type === "event"
+                        ? (detailState.timeline || []).find((event) => String(event.id) === String(reviewItem.target_id))
+                        : null;
+                    if (targetEvent?.user_confirmed) {
+                        return `<div class="button-row"><p class="muted">Confirmed in the source-linked chronology.</p><button class="btn-secondary-ledger" type="button" data-jump-tab="timeline">Open timeline</button></div>`;
+                    }
+                    return `<p class="muted">Prepared as ${escapeHtml(String(reviewItem.target_type || "ledger item").replace(/_/g, " "))}; it still needs review in the case ledger.</p>`;
+                }
+                if (reviewItem.status === "dismissed") {
+                    return `<div class="button-row"><p class="muted">Dismissed from this review run.</p><button class="btn-secondary-ledger analysis-review-action" type="button" data-analysis-review-id="${escapeHtml(reviewItem.id)}" data-analysis-action="reopen">Reopen</button></div>`;
+                }
+                const primaryAction = type === "timeline_suggestion" ? "confirm_timeline" : type === "review_question" ? "follow_up" : sourceCount > 1 ? "contradiction" : "claim";
+                const primaryLabel = primaryAction === "confirm_timeline" ? "Confirm event" : primaryAction === "follow_up" ? "Create follow-up" : primaryAction === "contradiction" ? "Prepare conflict" : "Prepare claim";
+                return `
+                    <div class="button-row case-analysis-actions">
+                        <button class="btn-ledger analysis-review-action" type="button" data-analysis-review-id="${escapeHtml(reviewItem.id)}" data-analysis-action="${primaryAction}">${primaryLabel}</button>
+                        ${type === "timeline_suggestion" ? `<button class="btn-secondary-ledger analysis-review-action" type="button" data-analysis-review-id="${escapeHtml(reviewItem.id)}" data-analysis-action="timeline">Prepare for edit</button>` : ""}
+                        ${type === "finding" && primaryAction !== "claim" ? `<button class="btn-secondary-ledger analysis-review-action" type="button" data-analysis-review-id="${escapeHtml(reviewItem.id)}" data-analysis-action="claim">Prepare claim</button>` : ""}
+                        ${type === "finding" && primaryAction !== "follow_up" ? `<button class="btn-secondary-ledger analysis-review-action" type="button" data-analysis-review-id="${escapeHtml(reviewItem.id)}" data-analysis-action="follow_up">Create follow-up</button>` : ""}
+                        <button class="btn-secondary-ledger analysis-review-action" type="button" data-analysis-review-id="${escapeHtml(reviewItem.id)}" data-analysis-action="dismiss">Dismiss</button>
+                    </div>
+                `;
+            };
+            return `
+                <section class="detail-section guided-depth">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Case-Wide Reading</h3>
+                            <p class="muted">Local, review-only synthesis across readable case sources.</p>
+                        </div>
+                        <button class="btn-secondary-ledger" type="button" id="runCaseAnalysis" ${activeJob ? "disabled" : ""}>${activeJob ? "Reading all sources..." : "Analyze all case sources"}</button>
+                    </div>
+                    <div class="muted" id="caseAnalysisStatus">${activeJob ? "A durable local reading is in progress and will resume here automatically." : "Analysis remains local and review-only; every readable source is processed without changing the source document."}</div>
+                    ${run ? `
+                        <p class="muted">${escapeHtml(run.provider || "local")} · ${escapeHtml(run.model || (content.analysis_method === "full_source_deterministic_comparison_v2" ? "full-source deterministic comparison" : content.analysis_method === "deterministic_source_comparison_v1" ? "legacy deterministic comparison" : "local analysis"))} · ${escapeHtml(String(run.created_at || "").slice(0, 19) || "just now")}${content.analysis_batches ? ` · ${escapeHtml(content.analysis_batches)} batch${Number(content.analysis_batches) === 1 ? "" : "es"}` : ""}</p>
+                        <details class="analysis-coverage" ${partiallyReadSources ? "open" : ""}>
+                            <summary>${escapeHtml(coverageSummary)}</summary>
+                            <p class="muted">${escapeHtml(coverageDetail)} ${partiallyReadSources ? "This historical, interrupted, or limited run did not process all source text. Review the original source and run the full-source reading again." : "Every readable source in this run was processed locally."}</p>
+                            ${sourceDocuments.length ? `<div class="source-ref-list">${sourceDocuments.map((source) => `<span class="source-ref-chip">${sourceDocumentButton(source.document_id)}<span>${escapeHtml(source.title || "Source document")}: ${source.source_was_truncated ? "partial" : "full"}${source.source_chunks_total ? ` · ${escapeHtml(source.source_chunks_analyzed || 0)}/${escapeHtml(source.source_chunks_total)} batches` : ""}</span></span>`).join("")}</div>` : ""}
+                        </details>
+                        ${timelineSuggestions.length ? `<div class="record-list" style="margin-bottom: 0.75rem;">${timelineSuggestions.slice(0, 12).map((item, index) => {
+                            const reviewItem = reviewItems.get(`timeline_suggestion:${index}`);
+                            return `
+                            <article class="record-row">
+                                <span class="record-kicker">${escapeHtml(item.event_date || "dated")}</span>
+                                <div>
+                                    <strong>${escapeHtml(item.title || "Timeline proposal")}</strong>
+                                    <p>${escapeHtml(item.description || "Review the cited source passage before adding this to the timeline.")}</p>
+                                    <div class="source-ref-list">${(item.sources || []).map((source) => `
+                                        <span class="source-ref-chip">${sourceButton(source)}<span>${escapeHtml(source.source_quote || "Source quote")}</span></span>
+                                    `).join("")}</div>
+                                    ${reviewControls(reviewItem, "timeline_suggestion", (item.sources || []).length)}
+                                </div>
+                            </article>
+                            `;
+                        }).join("")}</div>` : ""}
+                        ${findings.length ? `<div class="record-list">${findings.slice(0, 8).map((item, index) => {
+                            const reviewItem = reviewItems.get(`finding:${index}`);
+                            return `
+                            <article class="record-row">
+                                <span class="record-kicker">${escapeHtml(String(item.category || "observation").replace(/_/g, " "))}</span>
+                                <div>
+                                    <p>${escapeHtml(item.observation || "No observation recorded.")}</p>
+                                    <div class="source-ref-list">${(item.sources || []).map((source) => `
+                                        <span class="source-ref-chip">${sourceButton(source)}<span>${escapeHtml(source.source_quote || "Source quote")}</span></span>
+                                    `).join("")}</div>
+                                    ${reviewControls(reviewItem, "finding", (item.sources || []).length)}
+                                </div>
+                            </article>
+                        `;
+                        }).join("")}</div>` : `<div class="empty-state">No cited cross-document observations were retained from this run.</div>`}
+                        ${questions.length ? `<div class="record-list" style="margin-top: 0.75rem;">${questions.slice(0, 6).map((item, index) => {
+                            const reviewItem = reviewItems.get(`review_question:${index}`);
+                            return `
+                            <article class="record-row">
+                                <span class="record-kicker">verify</span>
+                                <div><p>${escapeHtml(item.question || "Review cited sources.")}</p><div class="source-ref-list">${(item.sources || []).map((source) => `<span class="source-ref-chip">${sourceButton(source)}<span>${escapeHtml(source.source_quote || "Source quote")}</span></span>`).join("")}</div>${reviewControls(reviewItem, "review_question", (item.sources || []).length)}</div>
+                            </article>
+                        `;
+                        }).join("")}</div>` : ""}
+                    ` : `<div class="empty-state">No case-wide local synthesis has been run yet.</div>`}
                 </section>
             `;
         }
@@ -6036,6 +6981,8 @@
         }
 
         function renderCases(cases) {
+            const outreachLink = document.getElementById("outreachNavLink");
+            if (outreachLink) outreachLink.href = selectedCaseId ? `outreach.html?case_id=${encodeURIComponent(selectedCaseId)}` : "outreach.html";
             document.getElementById("caseRows").innerHTML = cases.length ? cases.map((item) => {
                 const needs = [];
                 if ((item.documents_count || 0) === 0) needs.push("evidence");
@@ -6068,7 +7015,8 @@
         function renderOverview() {
             const c = detailState.case;
             if (!c) return `<div class="empty-state">Select a case first.</div>`;
-            const timeline = timelineEvents().slice(0, 8);
+            const timeline = timelineDisplayEvents().slice(0, 8);
+            const positionCounts = detailState.positionMatrix?.counts || {};
             if ((document.body.dataset.depth || "simple") === "simple") {
                 return `
                     <section class="detail-section">
@@ -6109,7 +7057,7 @@
                             <label class="input-field"><span>Document text</span><textarea class="control" id="quickDocText" placeholder="Paste extracted text or a short description"></textarea></label>
                             <button class="btn-ledger" type="button" id="quickAddDocument"><span class="nav-glyph">+</span> Add Document</button>
                         </div>
-                        <p class="muted" id="quickDocStatus">Pasted text is analyzed locally for timeline events, deadlines, claims, gaps, and source links.</p>
+                        <p class="muted" id="quickDocStatus">Pasted text is analyzed locally for timeline events, deadlines, obligations, claims, gaps, and source links.</p>
                     </section>
                 `;
             }
@@ -6174,8 +7122,19 @@
                 </section>
                 <section class="detail-section guided-depth">
                     <h3 class="panel-title">Evidence Position</h3>
-                    <p>${escapeHtml((detailState.summary?.claims?.supported || []).length)} supported claims / ${escapeHtml((detailState.summary?.claims?.unsupported || []).length)} unsupported claims.</p>
+                    <p>${escapeHtml(positionCounts.supported || 0)} supported / ${escapeHtml(positionCounts.mixed || 0)} mixed / ${escapeHtml(positionCounts.disputed || 0)} disputed / ${escapeHtml(positionCounts.unsupported || 0)} unsupported claims.</p>
+                    <p>${escapeHtml(positionCounts.pending_source_classification || 0)} source passage${positionCounts.pending_source_classification === 1 ? "" : "s"} awaiting classification.</p>
                     <p>${escapeHtml((detailState.summary?.risk_review?.missing_evidence || []).filter((item) => item.status !== "resolved").length)} missing-evidence review items are open.</p>
+                </section>
+                <section class="detail-section guided-depth">
+                    <div class="panel-header">
+                        <div>
+                            <h3 class="panel-title">Who Must Do What</h3>
+                            <p class="muted">Confirmed and proposed duties remain separate until reviewed against their source.</p>
+                        </div>
+                        <button class="btn-secondary-ledger" type="button" data-jump-tab="review" data-queue-type="obligation">Review obligations</button>
+                    </div>
+                    ${renderObligationRegister()}
                 </section>
                 <section class="detail-section">
                     <div class="panel-header">
@@ -6202,17 +7161,30 @@
                         <label class="input-field"><span>Document text</span><textarea class="control" id="quickDocText" placeholder="Paste extracted text or a short description"></textarea></label>
                         <button class="btn-ledger" type="button" id="quickAddDocument"><span class="nav-glyph">+</span> Add Document</button>
                     </div>
-                    <p class="muted" id="quickDocStatus">Pasted text is analyzed locally for timeline events, deadlines, claims, gaps, and source links.</p>
+                    <p class="muted" id="quickDocStatus">Pasted text is analyzed locally for timeline events, deadlines, obligations, claims, gaps, and source links.</p>
                 </section>
             `;
         }
 
         function renderDocuments() {
             const documents = detailState.documents || [];
+            const unreadableDocuments = documents.filter((doc) => !documentHasReadableText(doc));
             const reading = detailState.comprehension?.reading_status || {};
             const sourceLinks = reading.source_links ?? (detailState.evidenceLinks?.length || 0);
             const timelineCount = reading.timeline_events ?? timelineEvents().length;
             const reviewCount = reading.open_review_items ?? reviewQueueItems().length;
+            const google = googleConnectionState || {};
+            const googleVaultReady = Boolean(google.credential_vault?.available);
+            const googleReady = Boolean(google.connected && googleVaultReady);
+            const activeGoogleJob = (detailState.googleJobs || []).find((item) => ["queued", "running"].includes(item.status));
+            const activeGoogleJobDetail = activeGoogleJob
+                ? `${activeGoogleJob.stage || "Google evidence pull is running"} - ${activeGoogleJob.completed_items || 0}/${activeGoogleJob.total_items || "?"} source items - ${(activeGoogleJob.processed_words || 0).toLocaleString()}/${(activeGoogleJob.total_words || 0).toLocaleString()} extracted words.`
+                : "Use Gmail search syntax or a Drive query in the field above. LARO imports only the matching records and never sends messages.";
+            const googleStatus = googleReady
+                ? "Google is connected with locally encrypted credentials. Pulls remain read-only."
+                : google.configured
+                    ? "Connect Google to pull explicitly queried Gmail or Drive evidence into this case."
+                    : "Google OAuth is not configured on this local LARO installation.";
             return `
                 <section class="detail-section">
                     <div class="panel-header">
@@ -6241,6 +7213,21 @@
                             <div class="button-row">
                                 <button class="btn-ledger" type="button" id="sourceImportButton">Pull Into Case Ledger</button>
                                 <button class="btn-secondary-ledger" type="button" data-jump-tab="timeline">Open timeline</button>
+                            </div>
+                            <div class="record-row" style="margin-top: 0.8rem;">
+                                <span class="record-kicker">Google</span>
+                                <div>
+                                    <div class="record-heading">
+                                        <strong>${googleReady ? "Read-only connector ready" : google.connected ? "Connection needs local credentials" : "Google evidence connector"}</strong>
+                                        <span class="tag">${googleReady ? "connected" : google.configured ? "not connected" : "not configured"}</span>
+                                    </div>
+                                    <p>${escapeHtml(googleStatus)}</p>
+                                    <div class="button-row">
+                                        ${googleReady ? `<button class="btn-ledger" type="button" id="googlePullButton">Pull Google Sources</button>` : google.configured ? `<button class="btn-ledger" type="button" id="googleConnectButton">Connect Google</button>` : ""}
+                                        <button class="btn-secondary-ledger" type="button" id="googleRefreshStatus">Refresh connection</button>
+                                    </div>
+                                    <p class="muted" id="googlePullStatus">${escapeHtml(activeGoogleJobDetail)}</p>
+                                </div>
                             </div>
                             <details class="source-import-advanced expert-depth">
                                 <summary>Batch and provenance controls</summary>
@@ -6278,34 +7265,52 @@
                     <div class="document-toolbar">
                         <div>
                             <h3 class="panel-title">Evidence Register</h3>
-                            <p class="muted">${escapeHtml(documents.length)} persisted source${documents.length === 1 ? "" : "s"} in this case.</p>
+                            <p class="muted">${escapeHtml(documents.length)} persisted source${documents.length === 1 ? "" : "s"} in this case${unreadableDocuments.length ? `; ${unreadableDocuments.length} need text recovery` : ""}.</p>
                         </div>
                         <button class="btn-secondary-ledger" type="button" data-jump-tab="papertrail">Open papertrail</button>
                     </div>
-                    ${recordRows(documents, "No documents linked yet.", (doc) => `
+                    ${recordRows(documents, "No documents linked yet.", (doc) => {
+                        const readable = documentHasReadableText(doc);
+                        const recovery = doc.metadata?.extraction_recovery;
+                        return `
                         <article class="record-row document-row" data-document-id="${escapeHtml(doc.document_id || doc.id)}">
                             <span class="record-kicker">${escapeHtml(doc.document_type || doc.source_type || "document")}</span>
                             <div>
                                 <div class="record-heading">
                                     <strong>${escapeHtml(doc.title || doc.original_filename)}</strong>
+                                    ${readable ? "" : '<span class="tag orange">text needed</span>'}
                                     ${sourceDocumentButton(doc.document_id || doc.id)}
                                 </div>
-                                <p>${escapeHtml(doc.summary || "No summary")}</p>
-                                ${doc.extracted_text ? `<p class="muted">${escapeHtml(contextPreview(doc.extracted_text, 220))}</p>` : ""}
+                                <p>${escapeHtml(doc.summary || (readable ? "No summary" : "No readable text was extracted from this source yet."))}</p>
+                                ${readable ? `<p class="muted">${escapeHtml(contextPreview(doc.extracted_text || doc.ocr_text, 220))}</p>` : `
+                                    <details class="source-import-advanced">
+                                        <summary>Recover source text</summary>
+                                        <label class="input-field"><span>Recovered text</span><textarea class="control" data-recovery-text placeholder="Paste text from OCR or the original source. LARO will keep the source file unchanged and create a new extraction version."></textarea></label>
+                                        <div class="button-row"><button class="btn-ledger" type="button" data-recover-document-id="${escapeHtml(doc.document_id || doc.id)}">Analyze recovered text</button></div>
+                                        <p class="muted" data-recovery-status>Recovered text remains derived material until review; the original source stays linked.</p>
+                                    </details>
+                                `}
+                                ${recovery ? `<p class="muted">Recovered locally via ${escapeHtml(recovery.method || "text recovery")}; original source preserved.</p>` : ""}
                             </div>
                         </article>
-                    `)}
+                    `;
+                    })}
                 </section>
             `;
         }
 
         function renderTimeline() {
-            if (!detailState.timeline || !detailState.timeline.length) return `<div class="empty-state">No timeline events yet.</div>`;
+            const displayEvents = timelineDisplayEvents(true);
+            if (!displayEvents.length) return `<div class="empty-state">No timeline events or cited proposals yet.</div>`;
+            const actorOptions = timelineFacetOptions(displayEvents, eventActor);
+            const kindOptions = timelineFacetOptions(displayEvents, eventKind);
+            if (timelineActorFilter !== "all" && !actorOptions.includes(timelineActorFilter)) timelineActorFilter = "all";
+            if (timelineKindFilter !== "all" && !kindOptions.includes(timelineKindFilter)) timelineKindFilter = "all";
             const counts = {
-                all: timelineEvents().length,
-                needs_review: timelineEvents(true).filter((event) => eventStatus(event) === "needs_review").length,
-                confirmed: timelineEvents(true).filter((event) => eventStatus(event) === "confirmed").length,
-                rejected: timelineEvents(true).filter((event) => eventStatus(event) === "rejected").length
+                all: displayEvents.filter((event) => eventStatus(event) !== "rejected").length,
+                needs_review: displayEvents.filter((event) => eventStatus(event) === "needs_review").length,
+                confirmed: displayEvents.filter((event) => eventStatus(event) === "confirmed").length,
+                rejected: displayEvents.filter((event) => eventStatus(event) === "rejected").length
             };
             const visibleEvents = sortedTimeline(filteredTimelineEvents());
             const timelineBody = timelineViewMode === "story"
@@ -6313,25 +7318,36 @@
                 : timelineViewMode === "horizontal"
                     ? `<div class="timeline-strip">${visibleEvents.map((event) => renderTimelineCard(event)).join("")}</div>`
                     : `<div class="timeline-vertical">${visibleEvents.map((event) => {
-                const status = event.review_status || (event.user_confirmed ? "confirmed" : "needs_review");
+                const status = eventStatus(event);
                 const canReview = status === "needs_review";
                 return `
                     <article class="record-row timeline-row" data-event-id="${escapeHtml(event.id)}">
                         <span class="record-kicker">${escapeHtml(event.event_date || event.date)}</span>
                         <div>
                             <div class="record-heading">
-                                <strong>${escapeHtml(eventActor(event))} - ${escapeHtml(event.title)}</strong>
-                                ${evidenceSourceButton("event", event.id, event.created_from_document_id)}
+                                <strong>${escapeHtml(eventFactLabel(event))}</strong>
+                                ${evidenceSourceButton("event", event.id, event.created_from_document_id, event.evidence_quote)}
                             </div>
                             <p>${escapeHtml(eventActionText(event))}</p>
                             ${evidenceSnippet("event", event.id)}
-                            <p class="muted">${escapeHtml(status)} - ${escapeHtml(eventSourceLine(event))}</p>
-                            ${canReview ? `
+                            <p class="muted">${escapeHtml(eventKind(event))} - ${escapeHtml(event._analysisProposal ? "cited proposal" : status)} - ${escapeHtml(eventSourceLine(event))}</p>
+                            ${event._analysisProposal ? `<div class="button-row guided-depth">${timelineReviewButtons(status, false, event)}</div>` : canReview ? `
                                 <div class="form-grid guided-depth">
                                     <label class="input-field"><span>Date</span><input class="control timeline-date" value="${escapeHtml(event.event_date || event.date || "")}"></label>
                                     <label class="input-field"><span>Title</span><input class="control timeline-title" value="${escapeHtml(event.title || "")}"></label>
                                     <label class="input-field"><span>Description</span><textarea class="control timeline-description">${escapeHtml(event.description || event.summary || "")}</textarea></label>
                                 </div>
+                                <details class="source-import-advanced expert-depth">
+                                    <summary>Who and what</summary>
+                                    <div class="form-grid">
+                                        <label class="input-field"><span>Actor</span><input class="control timeline-actor" value="${escapeHtml(event.actor || "")}" placeholder="Who said or acted"></label>
+                                        <label class="input-field"><span>Action</span><input class="control timeline-action" value="${escapeHtml(event.action || "")}" placeholder="stated, decided, paid"></label>
+                                        <label class="input-field"><span>Affected party</span><input class="control timeline-affected-party" value="${escapeHtml(event.affected_party || "")}" placeholder="Who was affected"></label>
+                                        <label class="input-field"><span>Event type</span><select class="control timeline-kind">
+                                            ${["event", "communication", "decision", "filing", "financial", "obligation", "deadline", "hearing"].map((kind) => `<option value="${kind}" ${eventKind(event) === kind ? "selected" : ""}>${kind}</option>`).join("")}
+                                        </select></label>
+                                    </div>
+                                </details>
                                 <div class="button-row guided-depth">
                                     <button class="btn-ledger timeline-approve" type="button">Approve</button>
                                     <button class="btn-secondary-ledger timeline-update" type="button">Update</button>
@@ -6347,7 +7363,7 @@
                     <div class="timeline-toolbar">
                         <div>
                             <h3 class="panel-title">Evidence Timeline</h3>
-                            <p class="muted">${escapeHtml(visibleEvents.length)} visible event${visibleEvents.length === 1 ? "" : "s"} from persisted case evidence.</p>
+                            <p class="muted">${escapeHtml(visibleEvents.length)} visible event${visibleEvents.length === 1 ? "" : "s"} from persisted evidence and cited review proposals.</p>
                         </div>
                         <div class="timeline-control-group" role="group" aria-label="Timeline layout">
                             <button class="timeline-mode-button ${timelineViewMode === "story" ? "is-active" : ""}" type="button" data-timeline-mode="story">Story</button>
@@ -6360,6 +7376,19 @@
                             <button class="timeline-filter-button ${timelineStatusFilter === "confirmed" ? "is-active" : ""}" type="button" data-timeline-filter="confirmed">Confirmed ${escapeHtml(counts.confirmed)}</button>
                             <button class="timeline-filter-button ${timelineStatusFilter === "rejected" ? "is-active" : ""}" type="button" data-timeline-filter="rejected">Rejected ${escapeHtml(counts.rejected)}</button>
                         </div>
+                        <details class="source-import-advanced guided-depth timeline-filters">
+                            <summary>Filter people and event types</summary>
+                            <div class="form-grid">
+                                <label class="input-field"><span>Actor</span><select class="control" id="timelineActorFilter">
+                                    <option value="all">All actors</option>
+                                    ${actorOptions.map((actor) => `<option value="${escapeHtml(actor)}" ${timelineActorFilter === actor ? "selected" : ""}>${escapeHtml(actor)}</option>`).join("")}
+                                </select></label>
+                                <label class="input-field"><span>Event type</span><select class="control" id="timelineKindFilter">
+                                    <option value="all">All event types</option>
+                                    ${kindOptions.map((kind) => `<option value="${escapeHtml(kind)}" ${timelineKindFilter === kind ? "selected" : ""}>${escapeHtml(kind)}</option>`).join("")}
+                                </select></label>
+                            </div>
+                        </details>
                     </div>
                     ${renderTimelineBrief(visibleEvents, counts)}
                     ${visibleEvents.length ? timelineBody : `<div class="empty-state">No timeline events match this filter.</div>`}
@@ -6367,35 +7396,149 @@
             `;
         }
 
-        function renderClaims() {
+        function claimEvidenceStateLabel(state) {
+            return ({
+                supported: "supported",
+                mixed: "mixed evidence",
+                disputed: "disputed",
+                context: "context only",
+                needs_review: "classify sources",
+                unsupported: "unsupported"
+            })[state] || "unsupported";
+        }
+
+        function renderClaimSourceLane(label, sources = [], pending = false) {
+            if (!sources.length) return "";
             return `
-                ${recordRows(detailState.claims, "No claims recorded yet.", (claim) => `
-                    <article class="record-row claim-row" data-claim-id="${escapeHtml(claim.id)}">
-                        <span class="record-kicker">${escapeHtml(claim.status || "unreviewed")}</span>
-                        <div>
-                            <div class="record-heading">
-                                <strong>${escapeHtml(claim.asserted_by || "user")}</strong>
-                                ${evidenceSourceButton("claim", claim.id)}
-                            </div>
-                            <p>${escapeHtml(claim.statement)}</p>
-                            ${evidenceSnippet("claim", claim.id)}
-                            <p class="muted">${escapeHtml(claim.claim_type || "factual")} claim${claim.confidence ? ` - ${escapeHtml(Math.round(Number(claim.confidence) * 100))}% confidence` : ""}</p>
-                            <div class="button-row guided-depth">
-                                ${["needs_review", "unreviewed"].includes(claim.status || "unreviewed") ? `
-                                    <button class="btn-ledger claim-confirm" type="button">Confirm</button>
-                                    <button class="btn-secondary-ledger claim-dismiss" type="button">Dismiss</button>
-                                ` : `<button class="btn-secondary-ledger claim-reopen" type="button">Reopen review</button>`}
-                            </div>
+                <div class="claim-source-lane">
+                    <strong>${escapeHtml(label)} (${escapeHtml(sources.length)})</strong>
+                    ${sources.map((source) => `
+                        <div class="claim-source-row ${pending ? "evidence-link-row" : ""}"
+                            ${pending ? `data-evidence-link-id="${escapeHtml(source.evidence_link_id)}" data-target-type="claim"` : ""}>
+                            <p>${escapeHtml(source.snippet || source.title || "Source passage")}</p>
+                            ${sourceDocumentButton(source.document_id, source.snippet)}
+                            ${pending ? `
+                                <div class="claim-source-actions guided-depth">
+                                    ${claimRelationshipSelect({ ...source, target_type: "claim" })}
+                                    <button class="btn-ledger evidence-link-confirm" type="button">Confirm classification</button>
+                                    <button class="btn-secondary-ledger evidence-link-reject" type="button">Reject link</button>
+                                </div>
+                            ` : ""}
                         </div>
-                    </article>
-                `)}
-                <section class="detail-section guided-depth">
-                    <h3 class="panel-title">Add Claim</h3>
-                    <div class="form-grid">
-                        <label class="input-field"><span>Claim statement</span><textarea class="control" id="claimStatement" placeholder="Fact, allegation, or counterparty claim"></textarea></label>
-                        <button class="btn-ledger" type="button" id="quickAddClaim">Add Claim</button>
+                    `).join("")}
+                </div>
+            `;
+        }
+
+        function renderClaimPositionRow(claim) {
+            const evidenceState = claim.evidence_state || "unsupported";
+            const subject = claim.subject_party ? ` - about ${claim.subject_party}` : "";
+            return `
+                <article class="claim-position-row claim-row" data-claim-id="${escapeHtml(claim.id)}" data-evidence-state="${escapeHtml(evidenceState)}">
+                    <div class="claim-position-heading">
+                        <span class="claim-state-label" data-evidence-state="${escapeHtml(evidenceState)}">${escapeHtml(claimEvidenceStateLabel(evidenceState))}</span>
+                        <span class="muted">${escapeHtml(claim.materiality || "medium")} materiality</span>
                     </div>
+                    <div>
+                        <strong>${escapeHtml(claim.statement || "Claim statement unavailable")}</strong>
+                        <p class="muted">${escapeHtml(claim.claim_type || "factual")} - asserted by ${escapeHtml(claim.asserted_by || "unknown")}${escapeHtml(subject)} - ${escapeHtml(claim.status || "unreviewed")}</p>
+                    </div>
+                    ${(claim.supporting_sources?.length || claim.disputing_sources?.length || claim.context_sources?.length || claim.proposed_sources?.length) ? `
+                        <div class="claim-source-lanes">
+                            ${renderClaimSourceLane("Supports", claim.supporting_sources)}
+                            ${renderClaimSourceLane("Disputes", claim.disputing_sources)}
+                            ${renderClaimSourceLane("Context", claim.context_sources)}
+                            ${renderClaimSourceLane("Awaiting classification", claim.proposed_sources, true)}
+                        </div>
+                    ` : `<p class="muted">No source passage is linked. This claim remains unproven.</p>`}
+                    <div class="button-row guided-depth">
+                        ${["needs_review", "unreviewed"].includes(claim.status || "unreviewed") ? `
+                            <button class="btn-ledger claim-confirm" type="button">Mark reviewed</button>
+                            <button class="btn-secondary-ledger claim-dismiss" type="button">Dismiss</button>
+                        ` : `<button class="btn-secondary-ledger claim-reopen" type="button">Reopen review</button>`}
+                    </div>
+                    <details class="source-import-advanced expert-depth">
+                        <summary>Edit claim classification</summary>
+                        <div class="form-grid">
+                            <label class="input-field"><span>Asserted by</span><input class="control claim-asserted-by" value="${escapeHtml(claim.asserted_by || "")}"></label>
+                            <label class="input-field"><span>Position role</span><select class="control claim-position-role">
+                                ${["client", "counterparty", "institution", "court", "third_party", "source", "unknown"].map((role) => `<option value="${role}" ${(claim.position_role || "unknown") === role ? "selected" : ""}>${escapeHtml(role.replace("_", " "))}</option>`).join("")}
+                            </select></label>
+                            <label class="input-field"><span>Subject party</span><input class="control claim-subject-party" value="${escapeHtml(claim.subject_party || "")}" placeholder="Who or what this concerns"></label>
+                            <label class="input-field"><span>Claim type</span><select class="control claim-type">
+                                ${["factual", "allegation", "assumption", "legal_position", "document_statement", "cross_document_observation"].map((type) => `<option value="${type}" ${(claim.claim_type || "factual") === type ? "selected" : ""}>${escapeHtml(type.replaceAll("_", " "))}</option>`).join("")}
+                            </select></label>
+                            <label class="input-field"><span>Materiality</span><select class="control claim-materiality">
+                                ${["low", "medium", "high", "critical"].map((level) => `<option value="${level}" ${(claim.materiality || "medium") === level ? "selected" : ""}>${escapeHtml(level)}</option>`).join("")}
+                            </select></label>
+                            <button class="btn-secondary-ledger claim-save" type="button">Save classification</button>
+                        </div>
+                    </details>
+                </article>
+            `;
+        }
+
+        function renderClaims() {
+            const matrix = detailState.positionMatrix || { counts: {}, groups: [] };
+            const counts = matrix.counts || {};
+            const roleOptions = [...new Set((matrix.groups || []).map((group) => group.position_role || "unknown"))];
+            const filters = [
+                { key: "all", label: "All", count: counts.all || 0 },
+                { key: "supported", label: "Supported", count: counts.supported || 0 },
+                { key: "disputed", label: "Disputed / mixed", count: (counts.disputed || 0) + (counts.mixed || 0) },
+                { key: "needs_review", label: "Classify", count: counts.pending_source_classification || 0 },
+                { key: "unsupported", label: "Unsupported", count: counts.unsupported || 0 },
+                { key: "context", label: "Context", count: counts.context || 0 }
+            ];
+            const matchesEvidence = (claim) => claimEvidenceFilter === "all"
+                || (claimEvidenceFilter === "needs_review" && (claim.proposed_sources || []).length > 0)
+                || claim.evidence_state === claimEvidenceFilter
+                || (claimEvidenceFilter === "disputed" && claim.evidence_state === "mixed");
+            const visibleGroups = (matrix.groups || [])
+                .filter((group) => claimRoleFilter === "all" || group.position_role === claimRoleFilter)
+                .map((group) => ({ ...group, claims: (group.claims || []).filter(matchesEvidence) }))
+                .filter((group) => group.claims.length);
+            return `
+                <section class="detail-section position-matrix">
+                    <div class="position-matrix-header">
+                        <div>
+                            <h3 class="panel-title">Position Matrix</h3>
+                            <p class="muted">Who asserts what, and whether confirmed source passages support, dispute, contextualize, or have not yet proven it.</p>
+                        </div>
+                        <label class="input-field guided-depth"><span>Party role</span><select class="control" id="claimRoleFilter">
+                            <option value="all">All roles</option>
+                            ${roleOptions.map((role) => `<option value="${escapeHtml(role)}" ${claimRoleFilter === role ? "selected" : ""}>${escapeHtml(role.replace("_", " "))}</option>`).join("")}
+                        </select></label>
+                    </div>
+                    <div class="position-summary-grid">
+                        ${filters.map((filter) => `
+                            <button class="position-summary-button ${claimEvidenceFilter === filter.key ? "is-active" : ""}" type="button" data-claim-evidence-filter="${filter.key}">
+                                <strong>${escapeHtml(filter.count)}</strong><span>${escapeHtml(filter.label)}</span>
+                            </button>
+                        `).join("")}
+                    </div>
+                    ${visibleGroups.length ? visibleGroups.map((group) => `
+                        <section class="position-group" data-position-role="${escapeHtml(group.position_role)}">
+                            <div class="position-group-header">
+                                <div><h3>${escapeHtml(group.asserted_by)}</h3><p class="muted">${escapeHtml((group.position_role || "unknown").replace("_", " "))}</p></div>
+                                <span class="tag">${escapeHtml(group.claims.length)} position${group.claims.length === 1 ? "" : "s"}</span>
+                            </div>
+                            ${group.claims.map(renderClaimPositionRow).join("")}
+                        </section>
+                    `).join("") : `<div class="empty-state">No positions match this filter.</div>`}
                 </section>
+                <details class="detail-section source-import-advanced guided-depth">
+                    <summary>Add a claim or allegation</summary>
+                    <div class="form-grid">
+                        <label class="input-field"><span>Claim statement</span><textarea class="control" id="claimStatement" placeholder="Record the exact position without treating it as a proven fact"></textarea></label>
+                        <label class="input-field"><span>Asserted by</span><input class="control" id="claimAssertedBy" placeholder="Person, organization, institution, or court"></label>
+                        <label class="input-field"><span>Position role</span><select class="control" id="claimPositionRole"><option value="client">Client</option><option value="counterparty">Counterparty</option><option value="institution">Institution</option><option value="court">Court</option><option value="third_party">Third party</option><option value="source">Source</option><option value="unknown">Unknown</option></select></label>
+                        <label class="input-field"><span>Claim type</span><select class="control" id="claimType"><option value="factual">Factual claim</option><option value="allegation">Allegation</option><option value="assumption">Assumption</option><option value="legal_position">Legal position</option></select></label>
+                        <label class="input-field"><span>Subject party</span><input class="control" id="claimSubjectParty" placeholder="Who or what this position concerns"></label>
+                        <label class="input-field"><span>Materiality</span><select class="control" id="claimMateriality"><option value="medium">Medium</option><option value="low">Low</option><option value="high">High</option><option value="critical">Critical</option></select></label>
+                        <button class="btn-ledger" type="button" id="quickAddClaim">Store for review</button>
+                    </div>
+                </details>
             `;
         }
 
@@ -6406,7 +7549,7 @@
                     <div class="panel-header">
                         <div>
                             <h3 class="panel-title">Evidence Links</h3>
-                            <p class="muted">${escapeHtml(links.length)} persisted source link${links.length === 1 ? "" : "s"} connect documents to events, claims, deadlines, and open loops.</p>
+                            <p class="muted">${escapeHtml(links.length)} persisted source link${links.length === 1 ? "" : "s"} connect documents to events, claims, deadlines, obligations, and open loops.</p>
                         </div>
                     </div>
                     ${recordRows(links, "No evidence links yet. Upload or analyze a document to generate source-linked facts.", (link) => {
@@ -6414,17 +7557,18 @@
                         const sourceLabel = doc ? (doc.title || doc.original_filename || `Document ${link.document_id}`) : `Document ${link.document_id}`;
                         const status = evidenceLinkStatus(link);
                         return `
-                            <article class="record-row evidence-link-row" data-evidence-link-id="${escapeHtml(link.id)}">
+                            <article class="record-row evidence-link-row" data-evidence-link-id="${escapeHtml(link.id)}" data-target-type="${escapeHtml(link.target_type)}">
                                 <span class="record-kicker">${escapeHtml(status)}</span>
                                 <div>
                                     <div class="record-heading">
                                         <strong>${escapeHtml(sourceLabel)} -> ${escapeHtml(link.target_type)} ${escapeHtml(link.target_id)}</strong>
-                                        ${sourceDocumentButton(link.document_id)}
+                                        ${sourceDocumentButton(link.document_id, link.snippet)}
                                     </div>
                                     <p>${escapeHtml(link.snippet || "No snippet recorded.")}</p>
                                     <p class="muted">${escapeHtml(link.relationship || "supports")} - ${escapeHtml(link.strength || "medium")} strength${link.source_confidence ? ` - ${escapeHtml(Math.round(Number(link.source_confidence) * 100))}% source confidence` : ""}</p>
                                     <div class="button-row guided-depth">
                                         ${evidenceLinkNeedsReview(link) ? `
+                                            ${claimRelationshipSelect(link)}
                                             <button class="btn-ledger evidence-link-confirm" type="button">Confirm link</button>
                                             <button class="btn-secondary-ledger evidence-link-reject" type="button">Reject</button>
                                         ` : `<button class="btn-secondary-ledger evidence-link-reopen" type="button">Reopen review</button>`}
@@ -6437,10 +7581,55 @@
             `;
         }
 
+        function renderObligationRegister() {
+            const items = (detailState.obligations || []).filter((item) => !["resolved", "dismissed"].includes(item.status));
+            return recordRows(items, "No active obligations are recorded.", (item) => `
+                <article class="record-row obligation-row" data-obligation-id="${escapeHtml(item.id)}">
+                    <span class="record-kicker">${escapeHtml(item.status || "needs review")}</span>
+                    <div>
+                        <div class="record-heading">
+                            <strong>${escapeHtml(item.title || "Obligation")}</strong>
+                            ${evidenceSourceButton("obligation", item.id, item.source_document_id, item.source_quote)}
+                        </div>
+                        <p>${escapeHtml(item.description || item.source_quote || "No obligation detail recorded.")}</p>
+                        <p class="muted">Responsible: ${escapeHtml(item.responsible_party || "unassigned")}${item.due_date ? ` · due ${escapeHtml(item.due_date)}` : " · no due date confirmed"}</p>
+                        <div class="button-row guided-depth">
+                            ${item.user_confirmed ? `
+                                <button class="btn-ledger obligation-resolve" type="button">Mark fulfilled</button>
+                                <button class="btn-secondary-ledger obligation-reopen" type="button">Reopen review</button>
+                            ` : `
+                                <button class="btn-ledger obligation-confirm" type="button">Confirm</button>
+                                <button class="btn-secondary-ledger obligation-dismiss" type="button">Dismiss</button>
+                            `}
+                        </div>
+                    </div>
+                </article>
+            `);
+        }
+
+        function renderObligationCapture() {
+            const options = (detailState.documents || []).map((doc) => `<option value="${escapeHtml(doc.document_id)}">${escapeHtml(doc.title || doc.original_filename || `Document ${doc.document_id}`)}</option>`).join("");
+            return `
+                <details class="source-import-advanced guided-depth">
+                    <summary>Add an obligation manually</summary>
+                    <div class="form-grid">
+                        <label class="input-field"><span>What must happen</span><textarea class="control" id="obligationDescription" placeholder="Describe the duty without treating an allegation as confirmed fact"></textarea></label>
+                        <label class="input-field"><span>Responsible party</span><input class="control" id="obligationOwner" value="unassigned" placeholder="Robert, landlord, CAK, insurer"></label>
+                        <label class="input-field"><span>Due date</span><input class="control" id="obligationDueDate" type="date"></label>
+                        <label class="input-field"><span>Source document</span><select class="control" id="obligationSourceDocument"><option value="">No source selected</option>${options}</select></label>
+                        <label class="input-field"><span>Exact source passage</span><textarea class="control" id="obligationSourceQuote" placeholder="Required when a source document is selected"></textarea></label>
+                        <label class="input-field"><span>Risk</span><select class="control" id="obligationRisk"><option value="medium">Medium</option><option value="low">Low</option><option value="high">High</option></select></label>
+                        <button class="btn-ledger" type="button" id="addObligation">Store for review</button>
+                    </div>
+                </details>
+            `;
+        }
+
         function renderReview() {
             const items = filteredReviewQueueItems();
             return `
                 ${renderReviewWorkbench()}
+                ${renderObligationCapture()}
                 ${items.length ? `<div class="review-snapshot">${items.map((item) => renderReviewQueueItem(item)).join("")}</div>` : `<div class="empty-state">No review items match this filter.</div>`}
             `;
         }
@@ -6452,7 +7641,7 @@
 
         function papertrailNodeClass(node = {}) {
             if (node.type === "case") return "is-case";
-            if (["contradiction", "missing_evidence", "deadline", "approval"].includes(node.type)) return "is-risk";
+            if (["contradiction", "missing_evidence", "deadline", "obligation", "approval", "case_analysis_review"].includes(node.type)) return "is-risk";
             return "";
         }
 
@@ -6461,8 +7650,15 @@
                 node.status,
                 node.review_status,
                 node.role,
+                node.actor,
+                node.affected_party,
+                node.event_kind,
+                node.responsible_party,
+                node.beneficiary_party,
                 node.source,
                 node.identifier_type,
+                node.item_type,
+                node.target_type && node.target_id ? `prepared as ${node.target_type}` : "",
                 node.severity,
                 node.risk_level,
                 node.draft_type,
@@ -6488,9 +7684,17 @@
                 node.status,
                 node.review_status,
                 node.role,
+                node.actor,
+                node.action,
+                node.affected_party,
+                node.event_kind,
+                node.responsible_party,
+                node.beneficiary_party,
                 node.source,
                 node.identifier_type,
                 node.source_party,
+                node.item_type,
+                node.target_type,
                 node.severity,
                 node.date,
                 node.due_date
@@ -6503,7 +7707,7 @@
                 acc[node.type] = (acc[node.type] || 0) + 1;
                 return acc;
             }, {});
-            const preferred = ["case", "document", "event", "claim", "draft", "approval", "party", "identifier", "deadline", "contradiction", "missing_evidence", "open_loop"];
+            const preferred = ["case", "document", "event", "claim", "obligation", "draft", "approval", "party", "identifier", "deadline", "contradiction", "case_analysis_review", "missing_evidence", "open_loop"];
             const types = [...preferred, ...Object.keys(counts).filter((type) => !preferred.includes(type)).sort()];
             return [
                 { type: "all", label: "All", count: nodes.length },
@@ -6617,6 +7821,11 @@
                         <article class="inspector-tile"><strong>${escapeHtml(highRisk)}</strong><span>high risk</span></article>
                         <article class="inspector-tile"><strong>${escapeHtml(approved)}</strong><span>approved</span></article>
                     </div>
+                    <div class="button-row guided-depth" style="margin-top: 0.9rem;">
+                        <button class="btn-ledger generate-case-draft" type="button" data-generate-case-draft="lawyer_summary">Generate lawyer brief</button>
+                        <button class="btn-secondary-ledger generate-case-draft" type="button" data-generate-case-draft="case_summary">Generate case summary</button>
+                        <button class="btn-secondary-ledger generate-case-draft" type="button" data-generate-case-draft="red_line">Store red-line</button>
+                    </div>
                     <div class="form-grid guided-depth" style="margin-top: 0.9rem;">
                         <label class="input-field"><span>Draft title</span><input class="control" id="draftTitle" placeholder="Formal letter to CAK"></label>
                         <label class="input-field"><span>Type</span><select class="control" id="draftType">
@@ -6653,7 +7862,12 @@
             if (!detailState.case) return `<div class="empty-state">Select or create a case before generating a bundle.</div>`;
             const bundle = detailState.bundle || {};
             const shareApproval = bundle.external_sharing_approval || null;
-            const canRequestApproval = bundle.external_sharing_requires_approval && (!shareApproval || shareApproval.status === "rejected");
+            const canRequestApproval = bundle.external_sharing_requires_approval && (
+                !shareApproval
+                || ["rejected", "superseded"].includes(shareApproval.status)
+                || bundle.approval_stale
+            );
+            const canDownload = Boolean(bundle.external_sharing_allowed && shareApproval?.status === "approved");
             const sourceLinkedTimeline = bundle.source_linked_timeline || bundle.red_line?.sections?.source_linked_chronology || [];
             const nextActions = bundle.next_actions || bundle.red_line?.sections?.next_actions || [];
             return `
@@ -6663,14 +7877,17 @@
                     <p>${bundle.external_sharing_requires_approval ? "External sharing requires explicit approval." : "No approval flag returned."}</p>
                     <div class="button-row">
                         ${canRequestApproval ? `<button class="btn-ledger bundle-share-approval" type="button">Request sharing approval</button>` : ""}
+                        ${canDownload ? `<button class="btn-ledger bundle-download" type="button">Download approved bundle</button>` : ""}
                         ${shareApproval ? `<button class="btn-secondary-ledger" type="button" data-jump-tab="review">${escapeHtml(shareApproval.status === "pending" ? "Review pending approval" : "View approval record")}</button>` : ""}
                     </div>
+                    ${bundle.approval_stale ? `<div class="evidence-snippet"><strong>Approval expired</strong>The case changed after this snapshot was reviewed. Request a fresh approval before export.</div>` : ""}
                     ${shareApproval ? `
                         <div class="evidence-snippet">
                             <strong>Sharing approval</strong>
                             ${escapeHtml(shareApproval.status)} - ${escapeHtml(shareApproval.reason || shareApproval.action || "Case bundle external sharing approval.")}
                         </div>
                     ` : ""}
+                    ${bundle.bundle_snapshot_hash ? `<p class="muted expert-depth">Snapshot ${escapeHtml(String(bundle.bundle_snapshot_hash).slice(0, 16))}</p>` : ""}
                 </section>
                 <section class="detail-section">
                     <h3 class="panel-title">Bundle Index</h3>
@@ -6803,6 +8020,10 @@
                 </div>
             `;
             wireDetailActions();
+            resumeVisibleGooglePullJob();
+            resumeVisibleCaseAnalysisJob();
+            window.setTimeout(resumeVisibleGooglePullJob, 0);
+            window.setTimeout(resumeVisibleCaseAnalysisJob, 0);
         }
 
         function activateDetailTab(tabName, options = {}) {
@@ -6831,7 +8052,11 @@
                 action,
                 event_date: row.querySelector(".timeline-date")?.value.trim(),
                 title: row.querySelector(".timeline-title")?.value.trim(),
-                description: row.querySelector(".timeline-description")?.value.trim()
+                description: row.querySelector(".timeline-description")?.value.trim(),
+                actor: row.querySelector(".timeline-actor")?.value.trim(),
+                event_action: row.querySelector(".timeline-action")?.value.trim(),
+                affected_party: row.querySelector(".timeline-affected-party")?.value.trim(),
+                event_kind: row.querySelector(".timeline-kind")?.value
             };
             await apiFetch(`/api/cases/${selectedCaseId}/timeline/${eventId}`, {
                 method: "PATCH",
@@ -6861,6 +8086,60 @@
                 body: JSON.stringify({ action })
             });
             showToast(action === "confirm" ? "Deadline confirmed." : action === "resolve" ? "Deadline resolved." : "Deadline reopened.");
+            await loadCaseDetail(selectedCaseId);
+            await loadCommandCenter();
+        }
+
+        async function updateObligation(row, action) {
+            if (!selectedCaseId) return showToast("Select a case first.");
+            const obligationId = Number(row.dataset.obligationId);
+            const payload = { action };
+            const owner = row.querySelector(".obligation-owner");
+            const dueDate = row.querySelector(".obligation-due-date");
+            const beneficiary = row.querySelector(".obligation-beneficiary");
+            const risk = row.querySelector(".obligation-risk");
+            if (owner) payload.responsible_party = owner.value.trim() || "unassigned";
+            if (dueDate) payload.due_date = dueDate.value;
+            if (beneficiary) payload.beneficiary_party = beneficiary.value.trim();
+            if (risk) payload.risk_level = risk.value;
+            await apiFetch(`/api/cases/${selectedCaseId}/obligations/${obligationId}`, {
+                method: "PATCH",
+                body: JSON.stringify(payload)
+            });
+            const labels = {
+                confirm: "Obligation confirmed.",
+                resolve: "Obligation marked fulfilled.",
+                dismiss: "Obligation dismissed.",
+                reopen: "Obligation reopened for review.",
+                update: "Obligation details saved."
+            };
+            showToast(labels[action] || "Obligation updated.");
+            await loadCaseDetail(selectedCaseId);
+            await loadCommandCenter();
+        }
+
+        async function createManualObligation() {
+            if (!selectedCaseId) return showToast("Select a case first.");
+            const description = document.getElementById("obligationDescription")?.value.trim() || "";
+            if (!description) return showToast("Describe what must happen first.");
+            const sourceDocumentId = Number(document.getElementById("obligationSourceDocument")?.value || 0) || null;
+            const sourceQuote = document.getElementById("obligationSourceQuote")?.value.trim() || "";
+            if (sourceDocumentId && !sourceQuote) return showToast("Paste the exact source passage for the selected document.");
+            await apiFetch(`/api/cases/${selectedCaseId}/obligations`, {
+                method: "POST",
+                body: JSON.stringify({
+                    title: description.length > 88 ? `${description.slice(0, 87).trim()}...` : description,
+                    description,
+                    responsible_party: document.getElementById("obligationOwner")?.value.trim() || "unassigned",
+                    due_date: document.getElementById("obligationDueDate")?.value || "",
+                    risk_level: document.getElementById("obligationRisk")?.value || "medium",
+                    source_document_id: sourceDocumentId,
+                    source_quote: sourceQuote,
+                    status: "needs_review",
+                    user_confirmed: false
+                })
+            });
+            showToast("Obligation stored for source review.");
             await loadCaseDetail(selectedCaseId);
             await loadCommandCenter();
         }
@@ -6904,11 +8183,19 @@
         async function updateClaim(row, action) {
             if (!selectedCaseId) return showToast("Select a case first.");
             const claimId = Number(row.dataset.claimId);
+            const payload = { action };
+            if (action === "update") {
+                payload.asserted_by = row.querySelector(".claim-asserted-by")?.value.trim() || "unknown";
+                payload.position_role = row.querySelector(".claim-position-role")?.value || "unknown";
+                payload.subject_party = row.querySelector(".claim-subject-party")?.value.trim() || "";
+                payload.claim_type = row.querySelector(".claim-type")?.value || "factual";
+                payload.materiality = row.querySelector(".claim-materiality")?.value || "medium";
+            }
             await apiFetch(`/api/cases/${selectedCaseId}/claims/${claimId}`, {
                 method: "PATCH",
-                body: JSON.stringify({ action })
+                body: JSON.stringify(payload)
             });
-            showToast(action === "confirm" ? "Claim confirmed as reviewed." : action === "dismiss" ? "Claim dismissed." : "Claim reopened for review.");
+            showToast(action === "confirm" ? "Claim marked reviewed. Its evidence state remains separate." : action === "dismiss" ? "Claim dismissed." : action === "update" ? "Claim classification saved." : "Claim reopened for review.");
             await loadCaseDetail(selectedCaseId);
             await loadCommandCenter();
         }
@@ -6916,11 +8203,17 @@
         async function updateEvidenceLink(row, action) {
             if (!selectedCaseId) return showToast("Select a case first.");
             const linkId = Number(row.dataset.evidenceLinkId);
+            const payload = { action };
+            if (action === "confirm" && row.dataset.targetType === "claim") {
+                const relationship = row.querySelector(".evidence-link-relationship")?.value || "";
+                if (!relationship) return showToast("Choose whether the source supports, disputes, or contextualizes the claim.");
+                payload.relationship = relationship;
+            }
             await apiFetch(`/api/cases/${selectedCaseId}/evidence/${linkId}`, {
                 method: "PATCH",
-                body: JSON.stringify({ action })
+                body: JSON.stringify(payload)
             });
-            showToast(action === "confirm" ? "Evidence link confirmed." : action === "reject" ? "Evidence link rejected." : "Evidence link reopened for review.");
+            showToast(action === "confirm" ? "Evidence relationship confirmed." : action === "reject" ? "Evidence link rejected." : "Evidence link reopened for review.");
             await loadCaseDetail(selectedCaseId);
             await loadCommandCenter();
         }
@@ -6948,6 +8241,32 @@
             activateDetailTab(draft.status === "waiting_approval" ? "review" : "drafts");
         }
 
+        async function generateCaseDraft(button) {
+            if (!selectedCaseId) return showToast("Select a case first.");
+            const draftType = button.dataset.generateCaseDraft || "lawyer_summary";
+            const originalLabel = button.textContent;
+            button.disabled = true;
+            button.textContent = "Generating...";
+            try {
+                const response = await apiFetch(`/api/cases/${selectedCaseId}/drafts/generate`, {
+                    method: "POST",
+                    body: JSON.stringify({ draft_type: draftType })
+                });
+                const draft = response.draft || {};
+                const sourceCount = draft.source_document_ids?.length || 0;
+                showToast(`Source-linked draft stored with ${sourceCount} document${sourceCount === 1 ? "" : "s"}.`);
+                await loadCaseDetail(selectedCaseId);
+                await loadCommandCenter();
+                activateDetailTab(draft.status === "waiting_approval" ? "review" : "drafts");
+            } finally {
+                const refreshed = document.querySelector(`[data-generate-case-draft="${draftType}"]`);
+                if (refreshed) {
+                    refreshed.disabled = false;
+                    refreshed.textContent = originalLabel;
+                }
+            }
+        }
+
         async function requestBundleShareApproval() {
             if (!selectedCaseId) return showToast("Select a case first.");
             await apiFetch(`/api/cases/${selectedCaseId}/bundle/share-approval`, {
@@ -6960,6 +8279,37 @@
             await loadCaseDetail(selectedCaseId);
             await loadCommandCenter();
             activateDetailTab("review");
+        }
+
+        async function downloadApprovedBundle() {
+            if (!selectedCaseId) return showToast("Select a case first.");
+            const token = await ensureAuth();
+            const response = await fetch(`/api/cases/${selectedCaseId}/bundle/download`, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                await loadCaseDetail(selectedCaseId);
+                await loadCommandCenter();
+                activateDetailTab("bundle");
+                throw new Error(payload.error || `Bundle download failed: ${response.status}`);
+            }
+            const blob = await response.blob();
+            const disposition = response.headers.get("Content-Disposition") || "";
+            const filenameMatch = disposition.match(/filename\*?=(?:UTF-8''|\")?([^\";]+)/i);
+            const filename = filenameMatch ? decodeURIComponent(filenameMatch[1]) : `LARO_case_${selectedCaseId}.zip`;
+            const url = URL.createObjectURL(blob);
+            const anchor = document.createElement("a");
+            anchor.href = url;
+            anchor.download = filename;
+            document.body.appendChild(anchor);
+            anchor.click();
+            anchor.remove();
+            window.setTimeout(() => URL.revokeObjectURL(url), 60000);
+            showToast("Approved case bundle downloaded locally.");
+            await loadCaseDetail(selectedCaseId);
+            await loadCommandCenter();
+            activateDetailTab("bundle");
         }
 
         async function saveCaseContext() {
@@ -7025,6 +8375,7 @@
             const shell = document.getElementById("sourcePreviewShell");
             if (shell) shell.hidden = true;
             sourcePreviewDocumentId = null;
+            sourcePreviewSnippet = "";
         }
 
         function locateSourceDocument(documentId = sourcePreviewDocumentId) {
@@ -7067,6 +8418,68 @@
             `;
         }
 
+        function normalizedSourceSnippet(value = "") {
+            return String(value || "").replace(/\s+/g, " ").replace(/\.\.\.$/, "").trim();
+        }
+
+        function sourcePassageMarkup(text = "", snippet = "") {
+            const source = String(text || "");
+            const needle = normalizedSourceSnippet(snippet);
+            const index = needle ? source.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase()) : -1;
+            if (index < 0) return escapeHtml(contextPreview(source, 2400));
+            const start = Math.max(0, index - 180);
+            const end = Math.min(source.length, index + needle.length + 260);
+            const before = source.slice(start, index);
+            const matched = source.slice(index, index + needle.length);
+            const after = source.slice(index + needle.length, end);
+            return `${start ? "..." : ""}${escapeHtml(before)}<mark class="source-passage-highlight">${escapeHtml(matched)}</mark>${escapeHtml(after)}${end < source.length ? "..." : ""}`;
+        }
+
+        function sourceAnalysisSummary(document = {}) {
+            const analysis = document.metadata?.legal_analysis || {};
+            const findings = analysis.findings || {};
+            const statements = findings.source_passages || [];
+            const semantic = analysis.semantic_reading || {};
+            const semanticFindings = semantic.findings || [];
+            if (!statements.length && !semanticFindings.length) return "";
+            const categories = Object.entries(findings.category_counts || {})
+                .map(([name, count]) => `${count} ${name.replace(/_/g, " ")}`)
+                .join(" / ");
+            return `
+                <details class="source-import-advanced">
+                    <summary>Source analysis</summary>
+                    <p class="muted">Rule-based source passages for review. They are not legal conclusions.</p>
+                    ${categories ? `<p class="muted">${escapeHtml(categories)}</p>` : ""}
+                    ${statements.length ? `<div class="record-list">
+                        ${statements.slice(0, 8).map((item) => `
+                            <article class="record-row">
+                                <span class="record-kicker">${escapeHtml((item.categories || ["statement"]).join(" / ").replace(/_/g, " "))}</span>
+                                <div><p>${escapeHtml(item.excerpt || "")}</p><p class="muted">${item.requires_review ? "Needs review" : "Source statement"}</p></div>
+                            </article>
+                        `).join("")}
+                    </div>` : ""}
+                    ${semanticFindings.length ? `
+                        <section class="source-preview-text">
+                            <span>Local deep reading</span>
+                            <p>Model-proposed observations. Verify every observation against its cited source text.</p>
+                        </section>
+                        <div class="record-list">
+                            ${semanticFindings.slice(0, 8).map((item) => `
+                                <article class="record-row">
+                                    <span class="record-kicker">${escapeHtml(String(item.category || "observation").replace(/_/g, " "))}</span>
+                                    <div>
+                                        <p>${escapeHtml(item.observation || "No additional observation recorded.")}</p>
+                                        <p class="muted">${escapeHtml(item.source_quote || "No source quote")}</p>
+                                        <p class="muted">Needs review</p>
+                                    </div>
+                                </article>
+                            `).join("")}
+                        </div>
+                    ` : ""}
+                </details>
+            `;
+        }
+
         function renderSourcePreview(detail = {}) {
             const sourceDoc = detail.document || {};
             const title = documentTitle(sourceDoc);
@@ -7082,6 +8495,7 @@
                     sourceDoc.source_uri || sourceDoc.original_filename || "",
                     sourceDoc.confidentiality_level || ""
                 ].filter(Boolean).join(" / ") || "Review the linked document without leaving the case.";
+                if (sourcePreviewSnippet) previewSubtitle.textContent += " / cited passage highlighted";
             }
             if (previewBody) {
                 previewBody.innerHTML = `
@@ -7090,10 +8504,17 @@
                         <span>Summary</span>
                         <p>${escapeHtml(sourceDoc.summary || "No source summary is recorded yet.")}</p>
                     </section>
+                    ${sourcePreviewSnippet ? `
+                        <section class="source-preview-text">
+                            <span>Cited passage</span>
+                            <p>${sourcePassageMarkup(body, sourcePreviewSnippet)}</p>
+                        </section>
+                    ` : ""}
                     <section class="source-preview-text">
                         <span>Extracted text</span>
                         <p>${escapeHtml(contextPreview(body, 2400))}</p>
                     </section>
+                    ${sourceAnalysisSummary(sourceDoc)}
                     ${sourceDoc.source_uri ? `
                         <section class="source-preview-text">
                             <span>Original reference</span>
@@ -7106,6 +8527,8 @@
                 openOriginal.disabled = !detail.can_open_file;
                 openOriginal.textContent = detail.can_open_file ? "Open original" : "No local file";
             }
+            const refreshAnalysis = window.document.getElementById("sourcePreviewReanalyze");
+            if (refreshAnalysis) refreshAnalysis.disabled = !documentHasReadableText(sourceDoc);
         }
 
         async function openOriginalSourceDocument(documentId = sourcePreviewDocumentId) {
@@ -7122,9 +8545,10 @@
             showToast("Source document opened.");
         }
 
-        async function openSourceDocument(documentId) {
+        async function openSourceDocument(documentId, snippet = "") {
             if (!selectedCaseId || !documentId) return showToast("No source document is linked to this item.");
             sourcePreviewDocumentId = documentId;
+            sourcePreviewSnippet = normalizedSourceSnippet(snippet);
             const shell = document.getElementById("sourcePreviewShell");
             const body = document.getElementById("sourcePreviewBody");
             const title = document.getElementById("sourcePreviewTitle");
@@ -7137,8 +8561,105 @@
             renderSourcePreview(detail);
         }
 
+        async function reanalyzeSourceDocument(documentId = sourcePreviewDocumentId) {
+            if (!selectedCaseId || !documentId) return showToast("No source document is linked to this item.");
+            const button = document.getElementById("sourcePreviewReanalyze");
+            if (button) {
+                button.disabled = true;
+                button.textContent = "Refreshing...";
+            }
+            try {
+                const response = await apiFetch(`/api/cases/${selectedCaseId}/documents/${documentId}/reanalyze`, { method: "POST" });
+                showToast("Source analysis refreshed. The original document and extraction version are unchanged.");
+                await refreshActiveLedger({ silent: true });
+                await openSourceDocument(documentId, sourcePreviewSnippet);
+                return response;
+            } catch (error) {
+                showToast(error.message);
+                throw error;
+            } finally {
+                const refreshedButton = document.getElementById("sourcePreviewReanalyze");
+                if (refreshedButton) refreshedButton.textContent = "Refresh analysis";
+            }
+        }
+
+        async function updateCaseAnalysisReviewItem(button) {
+            if (!selectedCaseId) return showToast("Select a case first.");
+            const itemId = Number(button.dataset.analysisReviewId);
+            const action = button.dataset.analysisAction;
+            if (!itemId || !action) return showToast("This case-wide review item is unavailable.");
+            const originalLabel = button.textContent;
+            button.disabled = true;
+            button.textContent = action === "confirm_timeline" ? "Confirming..." : "Preparing...";
+            try {
+                const response = await apiFetch(`/api/cases/${selectedCaseId}/case-analysis/review-items/${itemId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ action })
+                });
+                const item = response.review_item || {};
+                const message = action === "dismiss"
+                    ? "Case-wide observation dismissed."
+                    : action === "reopen"
+                        ? "Case-wide observation reopened for review."
+                        : action === "confirm_timeline"
+                            ? "Cited event confirmed in the source-linked chronology."
+                        : `Prepared as ${String(item.target_type || "ledger item").replace(/_/g, " ")}. Review it before relying on it.`;
+                showToast(message);
+                await loadCaseDetail(selectedCaseId);
+                await loadCommandCenter();
+                if (item.status === "converted" && action !== "confirm_timeline") activateDetailTab(item.target_type === "event" ? "timeline" : "review");
+            } catch (error) {
+                showToast(error.message);
+                throw error;
+            } finally {
+                button.disabled = false;
+                button.textContent = originalLabel;
+            }
+        }
+
+        async function runCaseWideAnalysis() {
+            if (!selectedCaseId) return showToast("Select a case first.");
+            if (activeCaseAnalysisJobId) return showToast("The full-source reading is already running.");
+            const button = document.getElementById("runCaseAnalysis");
+            const status = document.getElementById("caseAnalysisStatus");
+            if (button) {
+                button.disabled = true;
+                button.textContent = "Reading all sources...";
+            }
+            try {
+                const started = await apiFetch(`/api/cases/${selectedCaseId}/case-analysis/jobs`, { method: "POST" });
+                const job = started.job || {};
+                if (!job.job_id) throw new Error("The local analysis job could not be started.");
+                activeCaseAnalysisJobId = job.job_id;
+                renderCaseAnalysisJobProgress(status, job);
+                const completedJob = await waitForCaseAnalysisJob(selectedCaseId, job.job_id, status);
+                const result = completedJob.result || {};
+                const findings = result.findings_count || 0;
+                const questions = result.review_questions_count || 0;
+                const timelineSuggestions = result.timeline_suggestions_count || 0;
+                showToast(`Case-wide reading stored for review: ${timelineSuggestions} timeline proposal${timelineSuggestions === 1 ? "" : "s"}, ${findings} observation${findings === 1 ? "" : "s"}, ${questions} question${questions === 1 ? "" : "s"}.`);
+                await loadCaseDetail(selectedCaseId);
+                await loadCommandCenter();
+                activateDetailTab("overview");
+            } catch (error) {
+                if (status) status.textContent = error.message;
+                showToast(error.message);
+            } finally {
+                activeCaseAnalysisJobId = null;
+                const refreshedButton = document.getElementById("runCaseAnalysis");
+                if (refreshedButton) {
+                    refreshedButton.disabled = false;
+                    refreshedButton.textContent = "Analyze all case sources";
+                }
+            }
+        }
+
         async function openCommandTarget(caseId, target, focus = {}) {
             const resolvedCaseId = caseId || selectedCaseId || commandState?.cases?.[0]?.case_id;
+            if (target === "document-inbox") {
+                openDocumentInbox();
+                return;
+            }
             if (target === "case-intake" || !resolvedCaseId) {
                 openCaseIntake();
                 return;
@@ -7179,8 +8700,8 @@
             const status = document.getElementById("caseCreateStatus");
             if (status) {
                 status.textContent = options.focusSource
-                    ? "Paste the first source now. When you create the case, LARO stores it as evidence and extracts timeline items, claims, gaps, deadlines, and open loops."
-                    : "Create the case once. If source text is included, LARO also creates the first evidence document, timeline suggestions, claims, gaps, deadlines, and open loops.";
+                    ? "Paste the first source now. When you create the case, LARO stores it as evidence and extracts timeline items, claims, gaps, deadlines, obligations, and open loops."
+                    : "Create the case once. If source text is included, LARO also creates the first evidence document, timeline suggestions, claims, gaps, deadlines, obligations, and open loops.";
             }
             document.getElementById("case-intake")?.scrollIntoView({ behavior: "smooth", block: "start" });
             window.setTimeout(() => {
@@ -7264,7 +8785,7 @@
             document.querySelectorAll(".source-doc-button").forEach((button) => {
                 button.addEventListener("click", (event) => {
                     event.stopPropagation();
-                    openSourceDocument(button.dataset.docId).catch((error) => showToast(error.message));
+                    openSourceDocument(button.dataset.docId, button.dataset.docSnippet || "").catch((error) => showToast(error.message));
                 });
             });
             const closePreview = document.getElementById("closeSourcePreview");
@@ -7275,8 +8796,14 @@
             };
             const previewLocate = document.getElementById("sourcePreviewLocate");
             if (previewLocate) previewLocate.onclick = () => locateSourceDocument();
+            const previewReanalyze = document.getElementById("sourcePreviewReanalyze");
+            if (previewReanalyze) previewReanalyze.onclick = () => reanalyzeSourceDocument().catch(() => {});
             const previewOpenOriginal = document.getElementById("sourcePreviewOpenOriginal");
             if (previewOpenOriginal) previewOpenOriginal.onclick = () => openOriginalSourceDocument().catch((error) => showToast(error.message));
+            document.getElementById("runCaseAnalysis")?.addEventListener("click", () => runCaseWideAnalysis().catch(() => {}));
+            document.querySelectorAll(".analysis-review-action").forEach((button) => {
+                button.addEventListener("click", () => updateCaseAnalysisReviewItem(button).catch(() => {}));
+            });
             document.querySelectorAll("[data-timeline-mode]").forEach((button) => {
                 button.addEventListener("click", () => {
                     const allowed = ["story", "horizontal", "vertical"];
@@ -7290,6 +8817,24 @@
                     timelineStatusFilter = allowed.includes(button.dataset.timelineFilter) ? button.dataset.timelineFilter : "all";
                     renderDetail();
                 });
+            });
+            document.getElementById("timelineActorFilter")?.addEventListener("change", (event) => {
+                timelineActorFilter = event.target.value || "all";
+                renderDetail();
+            });
+            document.getElementById("timelineKindFilter")?.addEventListener("change", (event) => {
+                timelineKindFilter = event.target.value || "all";
+                renderDetail();
+            });
+            document.querySelectorAll("[data-claim-evidence-filter]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    claimEvidenceFilter = button.dataset.claimEvidenceFilter || "all";
+                    renderDetail();
+                });
+            });
+            document.getElementById("claimRoleFilter")?.addEventListener("change", (event) => {
+                claimRoleFilter = event.target.value || "all";
+                renderDetail();
             });
             document.querySelectorAll("[data-papertrail-filter]").forEach((button) => {
                 button.addEventListener("click", () => {
@@ -7321,6 +8866,14 @@
                 row.querySelector(".deadline-resolve")?.addEventListener("click", () => updateDeadline(row, "resolve").catch((error) => showToast(error.message)));
                 row.querySelector(".deadline-reopen")?.addEventListener("click", () => updateDeadline(row, "reopen").catch((error) => showToast(error.message)));
             });
+            document.querySelectorAll(".obligation-row").forEach((row) => {
+                row.querySelector(".obligation-confirm")?.addEventListener("click", () => updateObligation(row, "confirm").catch((error) => showToast(error.message)));
+                row.querySelector(".obligation-resolve")?.addEventListener("click", () => updateObligation(row, "resolve").catch((error) => showToast(error.message)));
+                row.querySelector(".obligation-dismiss")?.addEventListener("click", () => updateObligation(row, "dismiss").catch((error) => showToast(error.message)));
+                row.querySelector(".obligation-reopen")?.addEventListener("click", () => updateObligation(row, "reopen").catch((error) => showToast(error.message)));
+                row.querySelector(".obligation-save")?.addEventListener("click", () => updateObligation(row, "update").catch((error) => showToast(error.message)));
+            });
+            document.getElementById("addObligation")?.addEventListener("click", () => createManualObligation().catch((error) => showToast(error.message)));
             document.querySelectorAll(".open-loop-row").forEach((row) => {
                 row.querySelector(".open-loop-resolve")?.addEventListener("click", () => updateOpenLoop(row, "resolve").catch((error) => showToast(error.message)));
                 row.querySelector(".open-loop-reopen")?.addEventListener("click", () => updateOpenLoop(row, "reopen").catch((error) => showToast(error.message)));
@@ -7339,6 +8892,7 @@
                 row.querySelector(".claim-confirm")?.addEventListener("click", () => updateClaim(row, "confirm").catch((error) => showToast(error.message)));
                 row.querySelector(".claim-dismiss")?.addEventListener("click", () => updateClaim(row, "dismiss").catch((error) => showToast(error.message)));
                 row.querySelector(".claim-reopen")?.addEventListener("click", () => updateClaim(row, "reopen").catch((error) => showToast(error.message)));
+                row.querySelector(".claim-save")?.addEventListener("click", () => updateClaim(row, "update").catch((error) => showToast(error.message)));
             });
             document.querySelectorAll(".evidence-link-row").forEach((row) => {
                 row.querySelector(".evidence-link-confirm")?.addEventListener("click", () => updateEvidenceLink(row, "confirm").catch((error) => showToast(error.message)));
@@ -7346,7 +8900,11 @@
                 row.querySelector(".evidence-link-reopen")?.addEventListener("click", () => updateEvidenceLink(row, "reopen").catch((error) => showToast(error.message)));
             });
             document.getElementById("createCaseDraft")?.addEventListener("click", () => createCaseDraft().catch((error) => showToast(error.message)));
+            document.querySelectorAll(".generate-case-draft").forEach((button) => {
+                button.addEventListener("click", () => generateCaseDraft(button).catch((error) => showToast(error.message)));
+            });
             document.querySelector(".bundle-share-approval")?.addEventListener("click", () => requestBundleShareApproval().catch((error) => showToast(error.message)));
+            document.querySelector(".bundle-download")?.addEventListener("click", () => downloadApprovedBundle().catch((error) => showToast(error.message)));
             document.getElementById("saveCaseContext")?.addEventListener("click", () => saveCaseContext().catch((error) => showToast(error.message)));
             document.getElementById("saveCaseIdentifier")?.addEventListener("click", () => saveCaseIdentifier().catch((error) => showToast(error.message)));
             document.getElementById("lookupCaseIdentifier")?.addEventListener("click", () => lookupCaseIdentifier().catch((error) => {
@@ -7354,6 +8912,38 @@
                 if (result) result.textContent = error.message;
                 showToast(error.message);
             }));
+            document.querySelectorAll("[data-recover-document-id]").forEach((button) => {
+                button.addEventListener("click", async () => {
+                    const row = button.closest(".document-row");
+                    const text = row?.querySelector("[data-recovery-text]")?.value.trim() || "";
+                    const status = row?.querySelector("[data-recovery-status]");
+                    const documentId = button.dataset.recoverDocumentId;
+                    if (!selectedCaseId || !documentId || !text) {
+                        showToast("Paste recovered source text before asking LARO to analyze it.");
+                        return;
+                    }
+                    const progress = startAnalysisProgress(status, { label: "Analyzing recovered source text", text });
+                    button.disabled = true;
+                    try {
+                        const response = await apiFetch(`/api/cases/${selectedCaseId}/documents/${documentId}/recover-text`, {
+                            method: "POST",
+                            body: JSON.stringify({ ocr_text: text, extraction_method: "manual_text_recovery" })
+                        });
+                        const result = analysisResultParts(response);
+                        progress.complete(`Text recovery stored as a new extraction version; ${result.parts.join(", ")} queued for review.`);
+                        showToast("Recovered text analyzed. The original source remains unchanged.");
+                        await refreshActiveLedger({ silent: true });
+                        if (result.reviewCount) activateDetailTab("review");
+                        else if (result.timelineCount) activateDetailTab("timeline");
+                        else activateDetailTab("documents");
+                    } catch (error) {
+                        progress.fail(error.message);
+                        showToast(error.message);
+                    } finally {
+                        button.disabled = false;
+                    }
+                });
+            });
             document.getElementById("quickAddDocument")?.addEventListener("click", async () => {
                 const title = document.getElementById("quickDocTitle").value.trim();
                 const text = document.getElementById("quickDocText").value.trim();
@@ -7385,10 +8975,17 @@
                 if (!selectedCaseId || !statement) return showToast("Add a claim statement first.");
                 await apiFetch(`/api/cases/${selectedCaseId}/claims`, {
                     method: "POST",
-                    body: JSON.stringify({ statement, asserted_by: "Robert" })
+                    body: JSON.stringify({
+                        statement,
+                        asserted_by: document.getElementById("claimAssertedBy")?.value.trim() || "user",
+                        position_role: document.getElementById("claimPositionRole")?.value || "unknown",
+                        subject_party: document.getElementById("claimSubjectParty")?.value.trim() || "",
+                        claim_type: document.getElementById("claimType")?.value || "factual",
+                        materiality: document.getElementById("claimMateriality")?.value || "medium"
+                    })
                 });
                 showToast("Claim added for review.");
-                await loadCaseDetail(selectedCaseId);
+                await refreshActiveLedger({ silent: true });
             });
             document.getElementById("sourceImportButton")?.addEventListener("click", async () => {
                 const status = document.getElementById("sourceImportStatus");
@@ -7427,6 +9024,52 @@
                     showToast(error.message);
                 }
             });
+            document.getElementById("googleRefreshStatus")?.addEventListener("click", async () => {
+                try {
+                    await refreshGoogleConnectionState();
+                } catch (error) {
+                    showToast(error.message);
+                }
+            });
+            document.getElementById("googleConnectButton")?.addEventListener("click", () => {
+                const returnTo = `${window.location.pathname}${window.location.search}`;
+                const params = new URLSearchParams({ return_to: returnTo, popup: "1" });
+                const popup = window.open(`/api/google/oauth/start?${params.toString()}`, "laro-google-oauth", "width=560,height=760");
+                watchGoogleConnection(popup);
+            });
+            document.getElementById("googlePullButton")?.addEventListener("click", async () => {
+                const status = document.getElementById("googlePullStatus");
+                const source = document.getElementById("sourceImportType")?.value || "gmail";
+                const query = document.getElementById("sourceImportTag")?.value.trim() || "";
+                if (!["gmail", "google_drive"].includes(source)) {
+                    return showToast("Choose Gmail or Google Drive before using the Google connector.");
+                }
+                if (!query) return showToast("Enter a Gmail search or Google Drive query first.");
+                const button = document.getElementById("googlePullButton");
+                if (button) button.disabled = true;
+                try {
+                    const started = await apiFetch(`/api/cases/${selectedCaseId}/documents/pull-google/jobs`, {
+                        method: "POST",
+                        body: JSON.stringify({ source, query, meta_tag: query, confidentiality_level: document.getElementById("sourceImportConfidentiality")?.value || "normal" })
+                    });
+                    activeGooglePullJobId = started.job?.job_id;
+                    renderGooglePullProgress(status, started.job);
+                    const job = await waitForGooglePullJob(selectedCaseId, activeGooglePullJobId, status);
+                    const response = job.result || {};
+                    const result = analysisResultParts(response);
+                    showToast(`${response.imported_count} Google source${response.imported_count === 1 ? "" : "s"} imported into the case ledger.`);
+                    await refreshActiveLedger({ silent: true });
+                    if (result.reviewCount) activateDetailTab("review");
+                    else if (result.timelineCount) activateDetailTab("timeline");
+                    else activateDetailTab("documents");
+                } catch (error) {
+                    if (status) status.textContent = error.message;
+                    showToast(error.message);
+                } finally {
+                    activeGooglePullJobId = null;
+                    if (button) button.disabled = false;
+                }
+            });
             document.getElementById("uploadDocumentButton")?.addEventListener("click", async () => {
                 const fileInput = document.getElementById("documentUploadFile");
                 const status = document.getElementById("documentUploadStatus");
@@ -7461,15 +9104,17 @@
         }
 
         async function loadCaseDetail(caseId) {
-            const [caseData, docs, timeline, claims, evidence, contradictions, missingEvidence, deadlines, loops, approvals, drafts, reviewQueue, operatingState, papertrail, summary, comprehension, redLine, bundle, audit] = await Promise.all([
+            const [caseData, docs, timeline, claims, positions, evidence, contradictions, missingEvidence, deadlines, obligations, loops, approvals, drafts, reviewQueue, operatingState, papertrail, summary, comprehension, redLine, bundle, audit, googleJobs, caseAnalysis, caseAnalysisJobs] = await Promise.all([
                 apiFetch(`/api/cases/${caseId}`),
                 apiFetch(`/api/cases/${caseId}/documents`),
                 apiFetch(`/api/cases/${caseId}/timeline`),
                 apiFetch(`/api/cases/${caseId}/claims`),
+                apiFetch(`/api/cases/${caseId}/positions`),
                 apiFetch(`/api/cases/${caseId}/evidence`),
                 apiFetch(`/api/cases/${caseId}/contradictions`),
                 apiFetch(`/api/cases/${caseId}/missing-evidence`),
                 apiFetch(`/api/cases/${caseId}/deadlines`),
+                apiFetch(`/api/cases/${caseId}/obligations`),
                 apiFetch(`/api/cases/${caseId}/open-loops`),
                 apiFetch(`/api/approvals?case_id=${caseId}`),
                 apiFetch(`/api/cases/${caseId}/drafts`),
@@ -7480,7 +9125,10 @@
                 apiFetch(`/api/cases/${caseId}/comprehension`),
                 apiFetch(`/api/cases/${caseId}/red-line`),
                 apiFetch(`/api/cases/${caseId}/bundle`),
-                apiFetch(`/api/audit?case_id=${caseId}`)
+                apiFetch(`/api/audit?case_id=${caseId}`),
+                apiFetch(`/api/cases/${caseId}/documents/pull-google/jobs`),
+                apiFetch(`/api/cases/${caseId}/case-analysis`),
+                apiFetch(`/api/cases/${caseId}/case-analysis/jobs`)
             ]);
             detailState = {
                 case: caseData,
@@ -7488,10 +9136,12 @@
                 documents: docs.documents || [],
                 timeline: timeline.timeline || [],
                 claims: claims.claims || [],
+                positionMatrix: positions,
                 evidenceLinks: evidence.evidence_links || [],
                 contradictions: contradictions.contradictions || [],
                 missingEvidence: missingEvidence.missing_evidence || [],
                 deadlines: deadlines.deadlines || [],
+                obligations: obligations.obligations || [],
                 openLoops: loops.open_loops || [],
                 approvals: approvals.approvals || [],
                 drafts: drafts.drafts || [],
@@ -7502,7 +9152,10 @@
                 comprehension,
                 redLine,
                 bundle,
-                audit: audit.audit_events || []
+                audit: audit.audit_events || [],
+                googleJobs: googleJobs.jobs || [],
+                caseAnalysis,
+                caseAnalysisJobs: caseAnalysisJobs.jobs || []
             };
             selectedCaseId = caseId;
             document.getElementById("detailTitle").textContent = caseData.title;
@@ -7517,12 +9170,16 @@
         }
 
         async function loadCommandCenter() {
-            commandState = sanitizeCommandCenterState(await apiFetch("/api/cases/command-center"));
+            const nextCommandState = await apiFetch("/api/cases/command-center");
+            const nextGoogleConnectionState = await apiFetch("/api/google/oauth/status");
+            commandState = sanitizeCommandCenterState(nextCommandState);
+            googleConnectionState = nextGoogleConnectionState;
             renderPriorityWorkbench(commandState);
             renderMetrics(commandState.counts || {});
             renderNextActions(commandState.next_actions || []);
             renderReviews(commandState);
             renderCases(commandState.cases || []);
+            renderDocumentInbox(commandState.document_inbox || [], commandState.cases || []);
             if (!selectedCaseId && commandState.cases?.length) {
                 await loadCaseDetail(commandState.cases[0].case_id);
             } else if (!commandState.cases?.length) {
@@ -7553,7 +9210,7 @@
             }
             if (!title) return showToast("Add a case title or paste the first source text.");
 
-            const defaultStatus = "Create the case once. If source text is included, LARO also creates the first evidence document, timeline suggestions, claims, gaps, deadlines, and open loops.";
+            const defaultStatus = "Create the case once. If source text is included, LARO also creates the first evidence document, timeline suggestions, claims, gaps, deadlines, obligations, and open loops.";
             const progress = initialEvidence
                 ? startAnalysisProgress(status, { label: "Creating case and analyzing first source", text: initialEvidence })
                 : null;
@@ -7619,6 +9276,18 @@
 
         function initializeUi() {
             targetAccountEmail();
+            window.addEventListener("message", (event) => {
+                if (event.origin !== window.location.origin || event.data?.type !== "laro-google-oauth") return;
+                window.clearInterval(googleConnectionWatchTimer);
+                googleConnectionWatchTimer = null;
+                if (event.data.status === "connected") {
+                    refreshGoogleConnectionState({ silent: true })
+                        .then(() => showToast("Google connected. Gmail and Drive pulls are ready."))
+                        .catch((error) => showToast(error.message));
+                } else {
+                    showToast(event.data.message || "Google connection needs attention.");
+                }
+            });
             setDepth(initialDepth());
             document.querySelectorAll("[data-depth]").forEach((button) => button.addEventListener("click", () => setDepth(button.dataset.depth)));
             document.querySelectorAll("[data-tab]").forEach((button) => {
@@ -7668,6 +9337,18 @@
             document.getElementById("createCaseButton").addEventListener("click", () => {
                 document.getElementById("caseForm").hidden = !document.getElementById("caseForm").hidden;
                 if (document.body.dataset.depth === "simple") setDepth("guided");
+            });
+            document.getElementById("toggleDocumentInboxForm").addEventListener("click", () => {
+                const form = document.getElementById("documentInboxForm");
+                form.hidden = !form.hidden;
+                if (!form.hidden) document.getElementById("documentInboxTitle")?.focus();
+            });
+            document.getElementById("stageDocumentInbox").addEventListener("click", () => {
+                stageDocumentInboxSource().catch((error) => {
+                    const status = document.getElementById("documentInboxStageStatus");
+                    if (status) status.textContent = error.message;
+                    showToast(error.message);
+                });
             });
             document.getElementById("submitCase").addEventListener("click", () => createCase().catch((error) => showToast(error.message)));
         }

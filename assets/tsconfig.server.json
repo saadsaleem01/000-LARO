@@ -1,0 +1,26 @@
+{
+    "compilerOptions": {
+      "target": "ES2020",
+      "module": "commonjs",
+      "moduleResolution": "node",
+      "outDir": "./dist/server",
+      "rootDir": ".",
+      "strict": false,
+      "esModuleInterop": true,
+      "skipLibCheck": true,
+      "resolveJsonModule": true,
+      "baseUrl": ".",
+      "paths": { "@shared/*": ["./shared/*"] }
+    },
+    "include": ["server/**/*.ts"],
+    "exclude": [
+      "node_modules",
+      "dist",
+      "src",
+      "electron/**/*",
+      "**/electron/**",
+      "server/scraper-nova.ts",
+      "server/scraper-optimized.ts",
+      "server/seed-data.ts"
+    ]
+  }

@@ -1,0 +1,284 @@
+/**
+ * File system scanner
+ * Recursively scans directories and discovers evidence files
+ */
+
+import * as fs from 'fs/promises';
+import * as path from 'path';
+import { EventEmitter } from 'events';
+import { nanoid } from 'nanoid';
+import mime from 'mime-types';
+import os from 'os';
+import { FileItem, Platform, ScanConfig } from '../shared/types';
+import { shouldExcludePath, shouldExcludeFile } from '../shared/exclusions';
+import { addFile, updateScanProgress } from './database';
+
+export interface ScannerOptions {
+  scanId: string;
+  config: ScanConfig;
+  platform: Platform;
+}
+
+export class FileScanner extends EventEmitter {
+  private scanId: string;
+  private config: ScanConfig;
+  private platform: Platform;
+  private isScanning: boolean = false;
+  private isPaused: boolean = false;
+  private shouldStop: boolean = false;
+  
+  private totalFiles: number = 0;
+  private scannedFiles: number = 0;
+  private totalSize: number = 0;
+  
+  constructor(options: ScannerOptions) {
+    super();
+    this.scanId = options.scanId;
+    this.config = options.config;
+    this.platform = options.platform;
+  }
+  
+  /**
+   * Start scanning
+   */
+  async start(): Promise<void> {
+    if (this.isScanning) {
+      throw new Error('Scanner is already running');
+    }
+    
+    this.isScanning = true;
+    this.shouldStop = false;
+    this.isPaused = false;
+    
+    try {
+      // Get root paths to scan based on platform
+      const rootPaths = this.getRootPaths();
+      
+      console.log(`[Scanner] Starting scan for case ${this.config.caseId}`);
+      console.log(`[Scanner] Root paths:`, rootPaths);
+      console.log(`[Scanner] Excluded folders:`, this.config.excludedFolders);
+      
+      // Scan each root path
+      for (const rootPath of rootPaths) {
+        if (this.shouldStop) break;
+        
+        try {
+          await this.scanDirectory(rootPath);
+        } catch (error: any) {
+          console.error(`[Scanner] Error scanning ${rootPath}:`, error.message);
+          // Continue with next root path
+        }
+      }
+      
+      if (this.shouldStop) {
+        this.emit('cancelled');
+        updateScanProgress({
+          scanId: this.scanId,
+          status: 'cancelled',
+        });
+      } else {
+        this.emit('completed', {
+          totalFiles: this.totalFiles,
+          totalSize: this.totalSize,
+        });
+        
+        // Update status based on auto-upload setting
+        updateScanProgress({
+          scanId: this.scanId,
+          status: this.config.autoUpload ? 'uploading' : 'review',
+          totalFiles: this.totalFiles,
+          scannedFiles: this.scannedFiles,
+          totalSize: this.totalSize,
+        });
+      }
+    } catch (error: any) {
+      console.error('[Scanner] Fatal error:', error);
+      this.emit('error', error);
+      updateScanProgress({
+        scanId: this.scanId,
+        status: 'failed',
+        errorMessage: error.message,
+      });
+    } finally {
+      this.isScanning = false;
+    }
+  }
+  
+  /**
+   * Stop scanning
+   */
+  stop(): void {
+    this.shouldStop = true;
+    this.isPaused = false;
+  }
+  
+  /**
+   * Pause scanning
+   */
+  pause(): void {
+    this.isPaused = true;
+  }
+  
+  /**
+   * Resume scanning
+   */
+  resume(): void {
+    this.isPaused = false;
+  }
+  
+  /**
+   * Get root paths to scan based on platform
+   */
+  private getRootPaths(): string[] {
+    // If folders are provided in config, use them
+    if (this.config.folders && this.config.folders.length > 0) {
+      return this.config.folders;
+    }
+
+    switch (this.platform) {
+      case 'windows':
+        // Scan user's home directory and common document locations
+        return [
+          os.homedir(),
+          path.join('C:', 'Users', 'Public'),
+        ];
+      
+      case 'macos':
+        return [
+          os.homedir(),
+        ];
+      
+      case 'linux':
+        return [
+          os.homedir(),
+        ];
+      
+      default:
+        return [os.homedir()];
+    }
+  }
+  
+  /**
+   * Recursively scan a directory
+   */
+  private async scanDirectory(dirPath: string): Promise<void> {
+    // Check if we should stop or pause
+    while (this.isPaused && !this.shouldStop) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
+    if (this.shouldStop) return;
+    
+    // Check if path should be excluded
+    if (shouldExcludePath(dirPath, this.platform, this.config.excludedFolders)) {
+      console.log(`[Scanner] Skipping excluded path: ${dirPath}`);
+      return;
+    }
+    
+    try {
+      const entries = await fs.readdir(dirPath, { withFileTypes: true });
+      
+      for (const entry of entries) {
+        if (this.shouldStop) break;
+        
+        // Wait if paused
+        while (this.isPaused && !this.shouldStop) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        
+        const fullPath = path.join(dirPath, entry.name);
+        
+        if (entry.isDirectory()) {
+          // Recursively scan subdirectory
+          await this.scanDirectory(fullPath);
+        } else if (entry.isFile()) {
+          // Process file
+          await this.processFile(fullPath, entry.name);
+        }
+      }
+    } catch (error: any) {
+      // Skip directories we don't have permission to read
+      if (error.code === 'EACCES' || error.code === 'EPERM') {
+        console.log(`[Scanner] Permission denied: ${dirPath}`);
+      } else {
+        console.error(`[Scanner] Error reading directory ${dirPath}:`, error.message);
+      }
+    }
+  }
+  
+  /**
+   * Process a single file
+   */
+  private async processFile(filePath: string, fileName: string): Promise<void> {
+    try {
+      // Check if file should be excluded
+      if (shouldExcludeFile(fileName)) {
+        return;
+      }
+      
+      // Get file stats
+      const stats = await fs.stat(filePath);
+      
+      // Skip empty files
+      if (stats.size === 0) {
+        return;
+      }
+      
+      // Skip very large files (> 1GB) - could be configurable
+      const MAX_FILE_SIZE = 1024 * 1024 * 1024; // 1GB
+      if (stats.size > MAX_FILE_SIZE) {
+        console.log(`[Scanner] Skipping large file (${stats.size} bytes): ${filePath}`);
+        return;
+      }
+      
+      // Determine MIME type
+      const mimeType = mime.lookup(filePath) || 'application/octet-stream';
+      
+      // Create file item
+      const fileItem: FileItem = {
+        id: nanoid(),
+        path: filePath,
+        name: fileName,
+        size: stats.size,
+        mimeType,
+        modifiedAt: stats.mtime,
+        uploadStatus: 'pending',
+        uploadProgress: 0,
+      };
+      
+      // Add to database
+      addFile(fileItem, this.scanId);
+      
+      // Update counters
+      this.totalFiles++;
+      this.scannedFiles++;
+      this.totalSize += stats.size;
+      
+      // Emit progress event every 10 files
+      if (this.totalFiles % 10 === 0) {
+        this.emit('progress', {
+          totalFiles: this.totalFiles,
+          scannedFiles: this.scannedFiles,
+          totalSize: this.totalSize,
+          currentFile: filePath,
+        });
+        
+        // Update database
+        updateScanProgress({
+          scanId: this.scanId,
+          totalFiles: this.totalFiles,
+          scannedFiles: this.scannedFiles,
+          totalSize: this.totalSize,
+          currentFile: filePath,
+        });
+      }
+    } catch (error: any) {
+      // Skip files we can't access
+      if (error.code === 'EACCES' || error.code === 'EPERM') {
+        console.log(`[Scanner] Permission denied: ${filePath}`);
+      } else {
+        console.error(`[Scanner error] Error processing file ${filePath}:`, error.message);
+      }
+    }
+  }
+}

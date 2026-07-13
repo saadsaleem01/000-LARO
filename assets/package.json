@@ -1,0 +1,190 @@
+{
+  "name": "laro-desktop",
+  "version": "1.0.0",
+  "description": "LARO Desktop — Legal AI Evidence Agent",
+  "main": "./dist/main/electron/index.js",
+  "author": "LARO",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev:renderer\" \"wait-on http://localhost:5173 && npm run dev:main\"",
+    "dev:renderer": "vite",
+    "dev:main": "tsc -p tsconfig.main.json && cross-env NODE_ENV=development electron dist/main/electron/index.js",
+    "build": "npm run build:main && npm run build:renderer",
+    "build:main": "tsc -p tsconfig.main.json",
+    "build:renderer": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "dev:server": "cross-env NODE_ENV=development npx tsx server/index.ts",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "postinstall": "node scripts/postinstall-rebuild.js"
+  },
+  "build": {
+    "appId": "com.laro.desktop",
+    "productName": "LARO Desktop",
+    "copyright": "Copyright © 2025 LARO",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "package.json"
+    ],
+    "asarUnpack": [
+      "**/node_modules/better-sqlite3/**/*",
+      "**/node_modules/canvas/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "docker-compose.yml",
+        "to": "laro-docker/docker-compose.yml"
+      },
+      {
+        "from": "Dockerfile.server",
+        "to": "laro-docker/Dockerfile.server"
+      },
+      {
+        "from": "package-lock.json",
+        "to": "laro-docker/package-lock.json"
+      },
+      {
+        "from": "docker",
+        "to": "laro-docker/docker"
+      },
+      {
+        "from": "dist/renderer",
+        "to": "laro-docker/dist/renderer"
+      },
+      {
+        "from": "server",
+        "to": "laro-docker/server"
+      },
+      {
+        "from": "shared",
+        "to": "laro-docker/shared"
+      }
+    ],
+    "afterPack": "./scripts/afterPack.js",
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "LARO Desktop"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.business"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "Noodzakelijk-Online",
+      "repo": "lawyer-automation-dashboards"
+    }
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.700.0",
+    "@aws-sdk/s3-request-presigner": "^3.700.0",
+    "@azure/msal-node": "^2.16.2",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "@radix-ui/react-avatar": "^1.1.2",
+    "@radix-ui/react-checkbox": "^1.1.3",
+    "@radix-ui/react-dialog": "^1.1.4",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-label": "^2.1.1",
+    "@radix-ui/react-popover": "^1.1.15",
+    "@radix-ui/react-progress": "^1.1.1",
+    "@radix-ui/react-scroll-area": "^1.2.2",
+    "@radix-ui/react-select": "^2.1.4",
+    "@radix-ui/react-separator": "^1.1.1",
+    "@radix-ui/react-slider": "^1.2.2",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@radix-ui/react-switch": "^1.1.2",
+    "@radix-ui/react-tabs": "^1.1.2",
+    "@radix-ui/react-tooltip": "^1.1.6",
+    "@tanstack/react-query": "^4.36.1",
+    "@trpc/client": "^10.45.2",
+    "@trpc/react-query": "^10.45.2",
+    "@trpc/server": "^10.45.2",
+    "archiver": "^7.0.1",
+    "axios": "^1.7.9",
+    "better-sqlite3": "^12.8.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "cookie-parser": "^1.4.7",
+    "date-fns": "^4.1.0",
+    "drizzle-orm": "^0.38.3",
+    "electron-log": "^5.4.3",
+    "express": "^4.21.2",
+    "google-auth-library": "^9.15.0",
+    "googleapis": "^144.0.0",
+    "isomorphic-fetch": "^3.0.0",
+    "jose": "^6.2.2",
+    "lucide-react": "^0.468.0",
+    "mammoth": "^1.12.0",
+    "mysql2": "^3.12.0",
+    "nanoid": "^5.0.9",
+    "node-cron": "^3.0.3",
+    "nodemailer": "^6.9.16",
+    "papaparse": "^5.4.1",
+    "pdf-parse": "^1.1.1",
+    "pdfjs-dist": "^4.8.69",
+    "pdfkit": "^0.15.1",
+    "playwright": "^1.49.1",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-dropzone": "^14.3.5",
+    "react-pdf": "^9.2.1",
+    "recharts": "^2.15.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "sonner": "^1.7.1",
+    "stripe": "^17.5.0",
+    "superjson": "^2.2.2",
+    "tailwind-merge": "^2.6.0",
+    "tesseract.js": "^5.1.1",
+    "uuid": "^11.0.3",
+    "wouter": "^3.5.0",
+    "xlsx": "^0.18.5",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/archiver": "^6.0.3",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cookie-parser": "^1.4.8",
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.2",
+    "@types/node-cron": "^3.0.11",
+    "@types/nodemailer": "^6.4.17",
+    "@types/papaparse": "^5.3.15",
+    "@types/pdfkit": "^0.13.7",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "cross-env": "^7.0.3",
+    "electron": "^41.0.3",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3",
+    "wait-on": "^8.0.1"
+  }
+}

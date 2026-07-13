@@ -38,15 +38,23 @@ class OutreachDirectoryClient:
         self,
         criteria: OutreachCriteria,
         records: Optional[Sequence[Dict[str, Any]]] = None,
-    ) -> Tuple[List[Dict[str, Any]], str]:
+    ) -> Tuple[List[Dict[str, Any]], str, Dict[str, Any]]:
         if records is not None:
-            return [normalize_outreach_target(record) for record in records], "provided"
+            return [normalize_outreach_target(record) for record in records], "provided", {
+                "source": "provided_candidates",
+            }
 
         configured_records = self._load_configured_records()
         if configured_records:
-            return [normalize_outreach_target(record) for record in configured_records], "configured_cache"
+            return [normalize_outreach_target(record) for record in configured_records], "configured_cache", {
+                "source": "configured_cache",
+                "cache_path_configured": True,
+            }
 
-        return [], "no_live_data"
+        return [], "directory_required", {
+            "source": "No approved outreach directory configured",
+            "reason": "LARO does not fabricate media or organization contacts. Import reviewed source records before matching.",
+        }
 
     def _load_configured_records(self) -> List[Dict[str, Any]]:
         path = os.environ.get(self.cache_env)
@@ -94,12 +102,17 @@ class OutreachTargetEngine:
         case_data: Dict[str, Any],
         records: Optional[Sequence[Dict[str, Any]]] = None,
         max_results: Optional[int] = None,
+        source_mode_override: Optional[str] = None,
+        source_details_override: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         criteria = self.build_criteria(case_data or {})
         if max_results:
             criteria.max_results = int(max_results)
 
-        candidates, source_mode = self.directory_client.search(criteria, records=records)
+        candidates, source_mode, source_details = self.directory_client.search(criteria, records=records)
+        if records is not None and source_mode_override:
+            source_mode = source_mode_override
+            source_details = source_details_override or source_details
         ranked = []
         for target in candidates:
             scored = self._score_target(target, criteria)
@@ -112,6 +125,7 @@ class OutreachTargetEngine:
             "target_type": criteria.target_type,
             "search_criteria": criteria_to_dict(criteria),
             "source_mode": source_mode,
+            "source_details": source_details,
             "result_count": len(ranked[: criteria.max_results]),
             "available_count": len(candidates),
         }
@@ -131,10 +145,10 @@ class OutreachTargetEngine:
 
         topic_score = min(35.0, len(topic_hits) * 7.0)
         field_score = 20.0 if field_overlap else 8.0 if target.get("target_type") == "media" else 0.0
-        impact_score = min(15.0, float(target.get("influence_score", 0.5)) * 15.0)
-        action_score = min(15.0, float(target.get("actionability_score", 0.5)) * 15.0)
+        impact_score = min(15.0, float(target.get("influence_score", 0)) * 15.0)
+        action_score = min(15.0, float(target.get("actionability_score", 0)) * 15.0)
         urgency_score = urgency_fit_score(target, criteria)
-        confidence_score = {"high": 5.0, "medium": 3.0, "low": 1.0}.get(target.get("confidence", "medium"), 3.0)
+        confidence_score = {"high": 5.0, "medium": 3.0, "low": 1.0}.get(target.get("confidence", "unknown"), 0.0)
 
         if not topic_hits and not field_overlap and target.get("target_type") != "media":
             return None
@@ -198,32 +212,29 @@ def normalize_outreach_target(record: Dict[str, Any]) -> Dict[str, Any]:
         "url": str(record.get("url") or ""),
         "contact_url": str(record.get("contact_url") or record.get("url") or ""),
         "source_url": str(record.get("source_url") or record.get("url") or ""),
-        "influence_score": float(record.get("influence_score", 0.5)),
-        "actionability_score": float(record.get("actionability_score", 0.5)),
-        "confidence": str(record.get("confidence") or "medium"),
+        "influence_score": _optional_score(record.get("influence_score")),
+        "actionability_score": _optional_score(record.get("actionability_score")),
+        "confidence": str(record.get("confidence") or "unknown"),
         "is_active": record.get("is_active", True),
     }
 
 
 def searchable_terms(data: Any) -> List[str]:
     if isinstance(data, OutreachCriteria):
-        values = data.legal_fields + data.evidence_topics + [
+        values = data.evidence_topics + [
             data.case_summary,
             data.case_description,
             data.desired_outcome,
-            data.region,
         ]
     elif isinstance(data, dict):
         values = (
             data.get("topics", [])
-            + data.get("legal_fields", [])
             + data.get("audience", [])
             + data.get("channels", [])
             + [
                 data.get("name", ""),
                 data.get("description", ""),
                 data.get("subtype", ""),
-                data.get("region", ""),
             ]
         )
     else:
@@ -276,146 +287,8 @@ def slugify(value: str) -> str:
     return "-".join(tokenize(value)) or "target"
 
 
-def sample_outreach_targets() -> List[Dict[str, Any]]:
-    return [
-        {
-            "id": "media-radar",
-            "target_type": "media",
-            "name": "Radar",
-            "subtype": "consumer program",
-            "parent_org": "AVROTROS",
-            "description": "Consumer affairs platform and TV program covering consumer problems, companies, services, and public-interest complaints.",
-            "topics": ["consumer", "companies", "contracts", "housing", "healthcare", "privacy", "misleading claims"],
-            "legal_fields": ["CONTRACT_LAW", "PROPERTY_LAW", "ADMINISTRATIVE_LAW"],
-            "audience": ["consumers", "public"],
-            "channels": ["television", "web", "forum", "panel", "breaking"],
-            "url": "https://radar.avrotros.nl/",
-            "contact_url": "https://radar.avrotros.nl/tip-de-redactie",
-            "source_url": "https://radar.avrotros.nl/",
-            "influence_score": 0.92,
-            "actionability_score": 0.86,
-            "confidence": "high",
-        },
-        {
-            "id": "media-nieuwsuur",
-            "target_type": "media",
-            "name": "Nieuwsuur",
-            "subtype": "current affairs program",
-            "parent_org": "NOS/NTR",
-            "description": "Current affairs program for public-interest cases, administrative failures, politics, policy, and systemic problems.",
-            "topics": ["administrative", "government", "policy", "fraud", "healthcare", "privacy", "public interest"],
-            "legal_fields": ["ADMINISTRATIVE_LAW", "PROPERTY_LAW", "EMPLOYMENT_LAW"],
-            "audience": ["national", "policy makers", "public"],
-            "channels": ["television", "web", "breaking"],
-            "url": "https://nos.nl/nieuwsuur",
-            "contact_url": "https://nos.nl/nieuwsuur",
-            "source_url": "https://nos.nl/nieuwsuur",
-            "influence_score": 0.95,
-            "actionability_score": 0.68,
-            "confidence": "high",
-        },
-        {
-            "id": "media-pointer",
-            "target_type": "media",
-            "name": "Pointer",
-            "subtype": "investigative journalism",
-            "parent_org": "KRO-NCRV",
-            "description": "Investigative journalism platform that starts from public tips and data-driven research.",
-            "topics": ["investigation", "data", "government", "healthcare", "housing", "privacy", "public interest"],
-            "legal_fields": ["ADMINISTRATIVE_LAW", "PROPERTY_LAW", "CONTRACT_LAW"],
-            "audience": ["national", "public"],
-            "channels": ["web", "television", "research"],
-            "url": "https://pointer.kro-ncrv.nl/",
-            "contact_url": "https://pointer.kro-ncrv.nl/",
-            "source_url": "https://pointer.kro-ncrv.nl/",
-            "influence_score": 0.86,
-            "actionability_score": 0.78,
-            "confidence": "high",
-        },
-        {
-            "id": "media-kassa",
-            "target_type": "media",
-            "name": "Kassa",
-            "subtype": "consumer program",
-            "parent_org": "BNNVARA",
-            "description": "Consumer program for problems with products, services, companies, and consumer rights.",
-            "topics": ["consumer", "contracts", "companies", "money", "housing", "healthcare"],
-            "legal_fields": ["CONTRACT_LAW", "PROPERTY_LAW", "ADMINISTRATIVE_LAW"],
-            "audience": ["consumers", "public"],
-            "channels": ["television", "web", "consumer"],
-            "url": "https://www.bnnvara.nl/kassa",
-            "contact_url": "https://www.bnnvara.nl/kassa",
-            "source_url": "https://www.bnnvara.nl/kassa",
-            "influence_score": 0.84,
-            "actionability_score": 0.76,
-            "confidence": "medium",
-        },
-        {
-            "id": "org-consumentenbond",
-            "target_type": "organization",
-            "name": "Consumentenbond",
-            "subtype": "consumer advocacy",
-            "description": "Consumer organization with legal advice, actions, claims, product tests, and collective pressure against companies.",
-            "topics": ["consumer", "contracts", "claims", "misleading claims", "legal advice", "companies"],
-            "legal_fields": ["CONTRACT_LAW", "PROPERTY_LAW", "ADMINISTRATIVE_LAW"],
-            "audience": ["consumers"],
-            "channels": ["advocacy", "claims", "legal advice", "campaigns"],
-            "url": "https://www.consumentenbond.nl/",
-            "contact_url": "https://www.consumentenbond.nl/contact",
-            "source_url": "https://www.consumentenbond.nl/",
-            "influence_score": 0.91,
-            "actionability_score": 0.9,
-            "confidence": "high",
-        },
-        {
-            "id": "org-woonbond",
-            "target_type": "organization",
-            "name": "Woonbond",
-            "subtype": "tenant advocacy",
-            "description": "Tenant association and advocacy group for rental housing, landlord disputes, rent, maintenance, and housing policy.",
-            "topics": ["housing", "rent", "tenants", "maintenance", "landlord", "social housing"],
-            "legal_fields": ["PROPERTY_LAW", "ADMINISTRATIVE_LAW"],
-            "audience": ["tenants"],
-            "channels": ["advocacy", "campaigns", "legal support"],
-            "url": "https://www.woonbond.nl/",
-            "contact_url": "https://www.woonbond.nl/contact/",
-            "source_url": "https://www.woonbond.nl/",
-            "influence_score": 0.82,
-            "actionability_score": 0.84,
-            "confidence": "high",
-        },
-        {
-            "id": "org-iederin",
-            "target_type": "organization",
-            "name": "Ieder(in)",
-            "subtype": "disability and chronic illness advocacy",
-            "description": "Network and advocacy organization for people with disabilities and chronic illness, including care, accessibility, money, work, and housing.",
-            "topics": ["disability", "chronic illness", "healthcare", "accessibility", "wmo", "wlz", "money", "housing"],
-            "legal_fields": ["ADMINISTRATIVE_LAW", "PROPERTY_LAW", "EMPLOYMENT_LAW"],
-            "audience": ["people with disabilities", "patients", "local advocacy groups"],
-            "channels": ["advocacy", "lobby", "panel", "meldpunt"],
-            "url": "https://iederin.nl/",
-            "contact_url": "https://iederin.nl/contact/",
-            "source_url": "https://iederin.nl/",
-            "influence_score": 0.84,
-            "actionability_score": 0.87,
-            "confidence": "high",
-        },
-        {
-            "id": "org-bits-of-freedom",
-            "target_type": "organization",
-            "name": "Bits of Freedom",
-            "subtype": "digital rights advocacy",
-            "description": "Digital rights organization focused on online fundamental rights, privacy, freedom of communication, and technology power.",
-            "topics": ["privacy", "technology", "data", "surveillance", "digital rights", "communication freedom"],
-            "legal_fields": ["ADMINISTRATIVE_LAW", "CONTRACT_LAW"],
-            "audience": ["public", "digital rights supporters"],
-            "channels": ["advocacy", "campaigns", "press"],
-            "url": "https://www.bitsoffreedom.nl/",
-            "contact_url": "https://www.bitsoffreedom.nl/contact/",
-            "source_url": "https://www.bitsoffreedom.nl/",
-            "influence_score": 0.8,
-            "actionability_score": 0.76,
-            "confidence": "high",
-        },
-    ]
+def _optional_score(value: Any) -> float:
+    try:
+        return float(value) if value not in {None, ""} else 0.0
+    except (TypeError, ValueError):
+        return 0.0

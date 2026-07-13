@@ -2,6 +2,8 @@
 
 import re
 
+from dutch_legal_taxonomy import DUTCH_LEGAL_AREAS, infer_legal_area_matches
+
 try:
     from sklearn.feature_extraction.text import TfidfVectorizer
     from sklearn.metrics.pairwise import cosine_similarity
@@ -45,56 +47,19 @@ class LegalCaseMatcher:
         except LookupError:
             self.stop_words = FALLBACK_STOP_WORDS
         
-        # Legal field definitions with keywords and descriptions
+        # Use the same 35-area NOvA vocabulary as lawyer matching and the UI.
         self.legal_fields = {
-            'family_law': {
-                'name': 'Family Law',
-                'keywords': ['divorce', 'custody', 'child support', 'alimony', 'marriage', 
-                             'separation', 'adoption', 'guardianship', 'parental rights'],
-                'description': 'Legal matters involving family relationships such as marriage, divorce, and child custody.'
-            },
-            'criminal_law': {
-                'name': 'Criminal Law',
-                'keywords': ['arrest', 'charge', 'crime', 'defense', 'prosecution', 'sentence', 
-                             'trial', 'felony', 'misdemeanor', 'probation', 'parole'],
-                'description': 'Legal matters involving crimes and their prosecution.'
-            },
-            'corporate_law': {
-                'name': 'Corporate Law',
-                'keywords': ['business', 'corporation', 'merger', 'acquisition', 'shareholder', 
-                             'board', 'director', 'compliance', 'governance', 'securities'],
-                'description': 'Legal matters involving business entities and corporate governance.'
-            },
-            'employment_law': {
-                'name': 'Employment Law',
-                'keywords': ['workplace', 'employee', 'employer', 'discrimination', 'harassment', 
-                             'termination', 'contract', 'wage', 'benefits', 'union', 'labor'],
-                'description': 'Legal matters involving employer-employee relationships.'
-            },
-            'real_estate_law': {
-                'name': 'Real Estate Law',
-                'keywords': ['property', 'lease', 'tenant', 'landlord', 'zoning', 'mortgage', 
-                             'foreclosure', 'deed', 'title', 'easement', 'eviction'],
-                'description': 'Legal matters involving real property transactions and rights.'
-            },
-            'immigration_law': {
-                'name': 'Immigration Law',
-                'keywords': ['visa', 'citizenship', 'deportation', 'asylum', 'refugee', 
-                             'green card', 'naturalization', 'immigration', 'foreign national'],
-                'description': 'Legal matters involving immigration status and citizenship.'
-            },
-            'intellectual_property_law': {
-                'name': 'Intellectual Property Law',
-                'keywords': ['patent', 'trademark', 'copyright', 'infringement', 'licensing', 
-                             'trade secret', 'intellectual property', 'IP', 'invention', 'author'],
-                'description': 'Legal matters involving intellectual property rights and protections.'
-            },
-            'tax_law': {
-                'name': 'Tax Law',
-                'keywords': ['tax', 'audit', 'irs', 'deduction', 'exemption', 'income tax', 
-                             'property tax', 'tax return', 'tax evasion', 'tax planning'],
-                'description': 'Legal matters involving taxation and tax compliance.'
+            area['key'].lower(): {
+                'name': area['label_en'],
+                'name_nl': area['name_nl'],
+                'nova_id': area['nova_id'],
+                'keywords': list(area['keywords']) + list(area['subareas']) + list(area['aliases']),
+                'description': (
+                    f"Dutch legal area: {area['name_nl']}"
+                    + (f". Includes {', '.join(area['subareas'])}." if area['subareas'] else ".")
+                ),
             }
+            for area in DUTCH_LEGAL_AREAS
         }
         
         # Create a corpus of legal field descriptions for TF-IDF
@@ -140,7 +105,19 @@ class LegalCaseMatcher:
         Returns:
             list: List of dictionaries containing matched fields with confidence scores
         """
-        # Preprocess the case description
+        taxonomy_matches = infer_legal_area_matches(case_description, limit=num_matches)
+        if taxonomy_matches:
+            return [{
+                'field_id': item['key'].lower(),
+                'field_name': item['label_en'],
+                'field_name_nl': item['name_nl'],
+                'nova_id': item['nova_id'],
+                'confidence': item['confidence'],
+                'matched_terms': item['matched_terms'],
+                'description': self.legal_fields[item['key'].lower()]['description'],
+            } for item in taxonomy_matches]
+
+        # Retain a deterministic TF-IDF fallback for sparse descriptions.
         processed_description = self.preprocess_text(case_description)
         
         if self.vectorizer and cosine_similarity is not None:

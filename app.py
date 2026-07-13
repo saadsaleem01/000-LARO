@@ -9,8 +9,11 @@ import sys
 import logging
 import datetime
 import hashlib
+import io
+import ipaddress
 import json
 import re
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urlencode
 from flask import Flask, request, jsonify, render_template, render_template_string, send_from_directory, send_file, session, redirect
 from flask_sqlalchemy import SQLAlchemy
@@ -21,6 +24,7 @@ from werkzeug.utils import secure_filename
 from authentication import EmailAuthenticationSystem
 from case_matching import LegalCaseMatcher
 from document_aggregation import DocumentAggregator
+from document_case_matching import rank_document_cases
 from document_intelligence import DocumentIntelligenceEngine
 from lawyer_outreach import LawyerOutreachSystem
 from outreach_analytics import build_outreach_analytics
@@ -38,7 +42,16 @@ from google_oauth import (
     exchange_google_oauth_code,
     google_oauth_config,
 )
+from google_evidence import GoogleEvidenceConnector, GoogleEvidenceError
+from google_token_store import LocalEncryptedTokenStore, TokenStoreError
+from dutch_legal_taxonomy import (
+    build_case_matching_profile,
+    normalize_legal_fields,
+    public_taxonomy,
+)
 from legal_ledger import init_legal_ledger
+from outreach_discovery import OutreachDiscoveryError, OutreachTargetDiscovery
+from case_bundle_export import CaseBundleExporter, CaseBundleExportError, DEFAULT_MAX_BUNDLE_BYTES
 
 # Configure logging
 logging.basicConfig(
@@ -54,9 +67,10 @@ logger = logging.getLogger('legal_ai_platform')
 app = Flask(__name__, static_folder='frontend', template_folder='frontend')
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(24).hex())
 app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('LARO_MAX_UPLOAD_BYTES', 25 * 1024 * 1024))
+app.config.setdefault('LARO_LOCAL_ACCOUNT_EMAIL', os.environ.get('LARO_LOCAL_ACCOUNT_EMAIL', 'robert.local@laro').strip().lower())
 app.config.setdefault('SQLALCHEMY_DATABASE_URI', os.environ.get('LARO_APP_DB_URL', 'sqlite:///:memory:'))
 app.config.setdefault('SQLALCHEMY_TRACK_MODIFICATIONS', False)
-app.wsgi_app = ProxyFix(app.wsgi_app)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=0, x_proto=0, x_host=0, x_port=0, x_prefix=0)
 db = SQLAlchemy(app)
 
 
@@ -88,22 +102,43 @@ init_serverless_functions()
 
 # Initialize the local-first persistent legal case ledger
 legal_ledger = init_legal_ledger(app)
-
-# In-memory storage for demo purposes
-# In a production environment, this would be a database
-cases = {}
-documents = {}
-document_analysis = {}
-evidence_timelines = {}
-outreach_campaigns = {}
-lawyer_matches = {}
-outreach_target_matches = {}
-google_connections = {}
-users = {}
-
+google_token_store = LocalEncryptedTokenStore()
+google_pull_executor = ThreadPoolExecutor(max_workers=2, thread_name_prefix='laro-google-pull')
+case_analysis_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix='laro-case-analysis')
 
 def _ledger_actor():
     return str(session.get('user_email') or session.get('user_id') or 'anonymous')
+
+
+def _local_session_owner_email():
+    return str(app.config.get('LARO_LOCAL_ACCOUNT_EMAIL') or 'robert.local@laro').strip().lower()
+
+
+def _is_loopback_request():
+    try:
+        original = request.environ.get('werkzeug.proxy_fix.orig', {})
+        remote_address = original.get('REMOTE_ADDR') or request.remote_addr
+        return ipaddress.ip_address(str(remote_address or '')).is_loopback
+    except ValueError:
+        return False
+
+
+def _is_loopback_host(host):
+    try:
+        return str(host or '').strip().lower() == 'localhost' or ipaddress.ip_address(str(host or '')).is_loopback
+    except ValueError:
+        return False
+
+
+def _ledger_case_access_allowed(case_id, external_user_id=None):
+    """Keep all authenticated case routes scoped to their owning local user."""
+    try:
+        return legal_ledger.user_owns_case(int(case_id), external_user_id or _ledger_actor())
+    except (TypeError, ValueError):
+        return False
+
+
+app.config['LARO_CASE_ACCESS_CHECK'] = _ledger_case_access_allowed
 
 
 def _ledger_user_payload(data=None):
@@ -134,29 +169,55 @@ def _legacy_case_from_ledger(case):
 
 
 def _case_for_legacy_endpoint(case_id):
-    """Return legacy-shaped case data without requiring transient demo storage."""
+    """Return legacy-shaped case data from the durable legal ledger."""
     ledger_case = legal_ledger.get_case(int(case_id))
     if ledger_case:
         return ledger_case, _legacy_case_from_ledger(ledger_case)
-    return None, cases.get(int(case_id))
+    return None, None
 
 
 def _case_matching_payload(ledger_case, legacy_case, request_data):
+    case_profile = build_case_matching_profile(
+        ledger_case,
+        documents=legal_ledger.list_documents(int(ledger_case['case_id'])) if ledger_case else [],
+        claims=legal_ledger.list_claims(int(ledger_case['case_id'])) if ledger_case else [],
+        contradictions=legal_ledger.list_contradictions(int(ledger_case['case_id'])) if ledger_case else [],
+        deadlines=legal_ledger.list_deadlines(int(ledger_case['case_id'])) if ledger_case else [],
+        obligations=legal_ledger.list_obligations(int(ledger_case['case_id'])) if ledger_case else [],
+    )
     legal_domain = (ledger_case or {}).get('legal_domain') or 'unknown'
+    manual_fields = request_data.get('legal_fields')
     requested_fields = (
-        request_data.get('legal_fields')
+        manual_fields
         or (legacy_case or {}).get('matched_fields')
         or ([legal_domain] if legal_domain else [])
     )
     if not isinstance(requested_fields, list):
         requested_fields = [requested_fields]
-    legal_fields = [field for field in (_field_id(item) for item in requested_fields) if field]
+    legal_fields = normalize_legal_fields([
+        field for field in (_field_id(item) for item in requested_fields)
+        if field and str(field).strip().lower() not in {'unknown', 'general', 'general_law'}
+    ])
+    if not manual_fields:
+        legal_fields = list(dict.fromkeys(
+            legal_fields + case_profile.get('inferred_legal_fields', [])
+        ))[:4]
+    requested_topics = request_data.get('evidence_topics') or []
+    if isinstance(requested_topics, str):
+        requested_topics = [requested_topics]
+    evidence_topics = list(dict.fromkeys([
+        *[str(item).strip() for item in requested_topics if str(item).strip()],
+        *case_profile.get('evidence_topics', []),
+    ]))
     return {
         'description': (ledger_case or {}).get('description') or (legacy_case or {}).get('case_description', ''),
         'summary': (ledger_case or {}).get('current_summary') or (legacy_case or {}).get('summary', ''),
         'legal_fields': legal_fields,
+        'manual_legal_field_override': bool(manual_fields),
         'complexity': (legacy_case or {}).get('complexity') or {'complexity_level': (ledger_case or {}).get('risk_level', 'medium')},
-        'evidence_topics': request_data.get('evidence_topics', []),
+        'evidence_topics': evidence_topics,
+        'case_profile': case_profile,
+        'case_source_coverage': case_profile.get('source_coverage', {}),
         'desired_outcome': request_data.get('desired_outcome') or (ledger_case or {}).get('desired_outcome', ''),
         'urgency': request_data.get('urgency') or (ledger_case or {}).get('priority', 'normal'),
         'region': request_data.get('region') or request_data.get('location') or (ledger_case or {}).get('court_or_institution') or 'Netherlands',
@@ -164,6 +225,9 @@ def _case_matching_payload(ledger_case, legacy_case, request_data):
         'radius_km': request_data.get('radius_km') or request_data.get('search_radius_km') or 50,
         'requires_financed_legal_aid': request_data.get('requires_financed_legal_aid', False),
         'prefer_specialization_association': request_data.get('prefer_specialization_association', True),
+        'require_specialization_association': request_data.get('require_specialization_association', False),
+        'nova_subject_ids': request_data.get('nova_subject_ids', []),
+        'nova_specialization_ids': request_data.get('nova_specialization_ids', []),
         'lawyer_name': request_data.get('lawyer_name', ''),
         'max_results': request_data.get('max_results', 30),
     }
@@ -320,16 +384,21 @@ def _safe_upload_name(filename):
     return name or 'uploaded-document'
 
 
-def _store_upload_file(case_id, storage):
+def _store_upload_in_directory(directory, storage, *, stable_name=False):
     original_name = storage.filename or 'uploaded-document'
     safe_name = _safe_upload_name(original_name)
     contents = storage.read()
     digest = hashlib.sha256(contents).hexdigest()
     stem, extension = os.path.splitext(safe_name)
-    stored_name = f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{digest[:12]}_{stem[:80]}{extension.lower()}"
-    local_path = os.path.join(_case_upload_dir(case_id), stored_name)
-    with open(local_path, 'wb') as handle:
-        handle.write(contents)
+    if stable_name:
+        stored_name = f"{digest[:20]}{extension.lower()}"
+    else:
+        prefix = f"{datetime.datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{digest[:12]}"
+        stored_name = f"{prefix}_{stem[:80]}{extension.lower()}"
+    local_path = os.path.join(directory, stored_name)
+    if not os.path.isfile(local_path):
+        with open(local_path, 'wb') as handle:
+            handle.write(contents)
     return {
         'original_name': original_name,
         'stored_name': stored_name,
@@ -338,6 +407,21 @@ def _store_upload_file(case_id, storage):
         'size_bytes': len(contents),
         'extension': extension.lower().replace('.', '') or 'unknown',
     }
+
+
+def _store_upload_file(case_id, storage):
+    return _store_upload_in_directory(_case_upload_dir(case_id), storage)
+
+
+def _inbox_upload_dir(actor):
+    actor_key = hashlib.sha256(str(actor or 'anonymous').encode('utf-8')).hexdigest()[:16]
+    path = os.path.join(_upload_root(), 'document_inbox', actor_key)
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
+def _store_inbox_upload_file(actor, storage):
+    return _store_upload_in_directory(_inbox_upload_dir(actor), storage, stable_name=True)
 
 
 def _safe_served_upload_path(local_path):
@@ -359,15 +443,25 @@ def _timeline_suggestions_from_analysis(case_id, document, analysis, actor):
     source_confidence = _source_confidence_from_analysis(analysis)
     events = []
     for item in (analysis.get('evidence') or {}).get('chronology_events', [])[:12]:
+        description = item.get('description') or ''
+        event_fields = document_intelligence.timeline_event_fields(description, {
+            **(document.get('metadata') or {}),
+            'sender': document.get('sender') or '',
+            'recipient': document.get('recipient') or '',
+        })
         event = legal_ledger.add_event(case_id, {
             'event_date': item.get('date') or datetime.datetime.utcnow().date().isoformat(),
-            'title': item.get('description') or 'Timeline suggestion',
-            'description': item.get('description') or '',
+            'title': description or 'Timeline suggestion',
+            'description': description,
             'event_type': 'suggested_from_document',
+            'event_kind': item.get('event_kind') or event_fields['event_kind'],
+            'actor': item.get('actor') or event_fields['actor'],
+            'event_action': item.get('action') or event_fields['action'],
+            'affected_party': item.get('affected_party') or event_fields['affected_party'],
             'source_confidence': source_confidence,
             'user_confirmed': False,
             'created_from_document_id': document['document_id'],
-            'evidence_quote': item.get('description') or '',
+            'evidence_quote': description,
         }, actor=actor)
         if event:
             events.append(event)
@@ -423,6 +517,73 @@ def _open_loop_title_from_context(context):
     return 'Review extracted obligation'
 
 
+def _obligation_title_from_context(context):
+    lowered = (context or '').lower()
+    if any(term in lowered for term in ('pay', 'payment', 'betaling', 'betalen', 'factuur', 'invoice')):
+        return 'Review payment obligation'
+    if any(term in lowered for term in ('submit', 'provide', 'indienen', 'aanleveren', 'verstrekken')):
+        return 'Review submission obligation'
+    if any(term in lowered for term in ('respond', 'reply', 'reageren', 'antwoord')):
+        return 'Review response obligation'
+    if any(term in lowered for term in ('repair', 'herstel', 'repareren')):
+        return 'Review repair obligation'
+    return 'Review extracted obligation'
+
+
+def _obligation_responsible_party(case_id, context):
+    lowered = f" {(context or '').lower()} "
+    robert_markers = (
+        ' robert must ', ' robert shall ', ' robert moet ', ' robert dient ',
+        ' you must ', ' you shall ', ' you are required ', ' u moet ', ' u dient ',
+    )
+    if any(marker in lowered for marker in robert_markers):
+        return 'Robert'
+
+    case = legal_ledger.get_case(case_id) or {}
+    named_matches = [
+        party.get('name')
+        for party in case.get('parties') or []
+        if party.get('name') and party.get('name').lower() in lowered
+    ]
+    unique_matches = list(dict.fromkeys(named_matches))
+    return unique_matches[0] if len(unique_matches) == 1 else 'unassigned'
+
+
+def _obligation_due_date(context, facts):
+    context_lower = (context or '').lower()
+    context_words = set(re.findall(r'\b[a-zA-Z][a-zA-Z]{3,}\b', context_lower))
+    candidates = []
+    for item in (facts.get('dates') or []):
+        normalized = str(item.get('normalized') or item.get('raw') or '').strip()
+        raw = str(item.get('raw') or '').strip()
+        date_context = str(item.get('context') or '').strip()
+        if not normalized:
+            continue
+        token = raw if raw and raw.lower() in context_lower else normalized
+        position = context_lower.find(token.lower())
+        marker_score = 0
+        if position >= 0:
+            prefix = context_lower[max(0, position - 48):position]
+            if re.search(r'(?:\bby|\bbefore|\bno later than|\buiterlijk|\bvo{1,2}r)\s+(?:on\s+)?$', prefix):
+                marker_score = 4
+            elif re.search(r'(?:\bdeadline|\bdue|\btermijn|\bvervaldatum)\D{0,24}$', prefix):
+                marker_score = 3
+        date_words = set(re.findall(r'\b[a-zA-Z][a-zA-Z]{3,}\b', date_context.lower()))
+        union = context_words | date_words
+        overlap = len(context_words & date_words) / len(union) if union else 0.0
+        candidates.append((normalized, marker_score, overlap))
+
+    if not candidates:
+        return ''
+    marked = sorted((item for item in candidates if item[1]), key=lambda item: (-item[1], -item[2], item[0]))
+    if marked:
+        return marked[0][0]
+    unique_dates = list(dict.fromkeys(item[0] for item in candidates))
+    if len(unique_dates) == 1 and max(item[2] for item in candidates) >= 0.35:
+        return unique_dates[0]
+    return ''
+
+
 def _context_looks_like_claim(context):
     lowered = f" {(context or '').lower()} "
     claim_terms = (
@@ -458,6 +619,7 @@ def _claim_suggestions_from_analysis(case_id, document, analysis, actor):
         seen.add(key)
         claim = legal_ledger.add_claim(case_id, {
             'asserted_by': 'document_intelligence',
+            'position_role': 'source',
             'claim_type': 'document_statement',
             'statement': f"From {document_label}: {context}",
             'status': 'needs_review',
@@ -770,6 +932,7 @@ def _add_analysis_evidence_link(case_id, document, target_type, target_id, conte
 def _review_items_from_analysis(case_id, document, analysis, actor):
     facts = analysis.get('facts') or {}
     deadlines = []
+    obligations = []
     open_loops = []
     evidence_links = []
     seen_deadlines = set()
@@ -807,6 +970,49 @@ def _review_items_from_analysis(case_id, document, analysis, actor):
             )
             if link:
                 evidence_links.append(link)
+
+    existing_obligation_keys = {
+        (item.get('source_document_id'), (item.get('source_quote') or '').lower())
+        for item in legal_ledger.list_obligations(case_id)
+    }
+    for raw_context in (facts.get('obligations') or [])[:10]:
+        context = _context_preview(raw_context, 320)
+        if not context:
+            continue
+        key = (document['document_id'], context.lower())
+        if key in existing_obligation_keys:
+            continue
+        lowered = context.lower()
+        risk_level = 'high' if any(term in lowered for term in ('deadline', 'termijn', 'failure', 'waive', 'urgent', 'spoed', 'court', 'rechtbank')) else 'medium'
+        item = legal_ledger.add_obligation(case_id, {
+            'title': _obligation_title_from_context(context),
+            'description': f"Extracted from {document_label}: {context}",
+            'responsible_party': _obligation_responsible_party(case_id, context),
+            'obligation_type': 'extracted_from_document',
+            'due_date': _obligation_due_date(context, facts),
+            'status': 'needs_review',
+            'risk_level': risk_level,
+            'source_document_id': document['document_id'],
+            'source_quote': context,
+            'source_confidence': source_confidence,
+            'user_confirmed': False,
+        }, actor=actor)
+        if not item:
+            continue
+        obligations.append(item)
+        existing_obligation_keys.add(key)
+        link = _add_analysis_evidence_link(
+            case_id,
+            document,
+            'obligation',
+            item['id'],
+            context,
+            'states_obligation',
+            source_confidence,
+            actor,
+        )
+        if link:
+            evidence_links.append(link)
 
     loop_sources = []
     loop_sources.extend(facts.get('obligations') or [])
@@ -846,6 +1052,7 @@ def _review_items_from_analysis(case_id, document, analysis, actor):
 
     return {
         'deadline_suggestions': deadlines,
+        'obligation_suggestions': obligations,
         'open_loop_suggestions': open_loops,
         'evidence_links': evidence_links,
     }
@@ -863,7 +1070,7 @@ def _analysis_artifacts_for_document(case_id, document, analysis, actor, options
     if _enabled_flag(options, 'create_timeline_suggestions', True):
         suggested_events = _timeline_suggestions_from_analysis(case_id, document, analysis, actor)
 
-    review_items = {'deadline_suggestions': [], 'open_loop_suggestions': []}
+    review_items = {'deadline_suggestions': [], 'obligation_suggestions': [], 'open_loop_suggestions': []}
     if _enabled_flag(options, 'create_review_items', True):
         review_items = _review_items_from_analysis(case_id, document, analysis, actor)
 
@@ -880,6 +1087,7 @@ def _analysis_artifacts_for_document(case_id, document, analysis, actor, options
     created_target_keys = {
         *{('event', item['id']) for item in suggested_events if item.get('id')},
         *{('deadline', item['id']) for item in review_items.get('deadline_suggestions', []) if item.get('id')},
+        *{('obligation', item['id']) for item in review_items.get('obligation_suggestions', []) if item.get('id')},
         *{('open_loop', item['id']) for item in review_items.get('open_loop_suggestions', []) if item.get('id')},
         *{('claim', item['id']) for item in claim_items.get('claim_suggestions', []) if item.get('id')},
         *{('contradiction', item['id']) for item in contradiction_items.get('contradiction_suggestions', []) if item.get('id')},
@@ -1004,6 +1212,440 @@ def _persist_imported_source_document(case_id, record, source_type, meta_tag, ac
     }
 
 
+def _import_source_records(case_id, data, records, *, source_type, meta_tag, actor):
+    """Persist source records once, with stable source-URI deduplication."""
+    existing_source_uris = {
+        item.get('source_uri')
+        for item in legal_ledger.list_documents(case_id)
+        if item.get('source_uri')
+    }
+    imported = []
+    skipped = []
+    artifact_counts = {
+        'timeline_suggestions': 0,
+        'deadline_suggestions': 0,
+        'obligation_suggestions': 0,
+        'open_loop_suggestions': 0,
+        'claim_suggestions': 0,
+        'contradiction_suggestions': 0,
+        'missing_evidence_suggestions': 0,
+        'evidence_links': 0,
+    }
+
+    for index, record in enumerate(records):
+        if not isinstance(record, dict):
+            skipped.append({'index': index, 'reason': 'record_must_be_object'})
+            continue
+        source_id = record.get('source_id') or record.get('id') or record.get('message_id') or record.get('file_id')
+        normalized_source_type = record.get('source_type') or record.get('source') or source_type
+        source_uri = _source_record_uri(normalized_source_type, source_id, record)
+        if source_uri and source_uri in existing_source_uris:
+            skipped.append({'index': index, 'source_uri': source_uri, 'reason': 'duplicate_source_uri'})
+            continue
+
+        result = _persist_imported_source_document(case_id, record, normalized_source_type, meta_tag, actor, data)
+        if not result:
+            skipped.append({'index': index, 'source_uri': source_uri, 'reason': 'not_persisted'})
+            continue
+
+        document = result['document']
+        if document.get('source_uri'):
+            existing_source_uris.add(document['source_uri'])
+        imported.append(result)
+        for key in artifact_counts:
+            value = result.get(key)
+            artifact_counts[key] += len(value) if isinstance(value, list) else int(value or 0)
+
+    db_manager.invalidate_cache('documents')
+    return {
+        'case_id': case_id,
+        'source_type': source_type,
+        'meta_tag': meta_tag,
+        'imported_count': len(imported),
+        'skipped_count': len(skipped),
+        'imported_documents': imported,
+        'skipped_documents': skipped,
+        'artifact_counts': artifact_counts,
+        'comprehension': legal_ledger.case_comprehension_dossier(case_id),
+    }
+
+
+def _google_record_word_count(record):
+    """Count only text received from Google; the number is progress evidence, not an estimate."""
+    text = " ".join(str(record.get(key) or "") for key in (
+        'content', 'plain_text', 'extracted_text', 'ocr_text', 'body', 'description',
+    ))
+    return len(re.findall(r"\S+", text))
+
+
+def _merge_import_artifacts(target, source):
+    for key in target:
+        target[key] += int((source or {}).get(key) or 0)
+
+
+def _run_google_pull_job(job_id, case_id, job_data, actor):
+    """Run a read-only Google pull with durable, inspectable local progress."""
+    source = str(job_data.get('source') or 'gmail').strip().lower()
+    query = str(job_data.get('query') or '').strip()
+    max_items = int(job_data.get('max_items') or 50)
+    days_back = job_data.get('days_back')
+    sort_order = str(job_data.get('sort_order') or 'newest').strip().lower()
+    import_data = {
+        'confidentiality_level': job_data.get('confidentiality_level') or 'normal',
+        'source': source,
+        'query': query,
+        'meta_tag': query,
+    }
+    artifacts = {
+        'timeline_suggestions': 0,
+        'deadline_suggestions': 0,
+        'obligation_suggestions': 0,
+        'open_loop_suggestions': 0,
+        'claim_suggestions': 0,
+        'contradiction_suggestions': 0,
+        'missing_evidence_suggestions': 0,
+        'evidence_links': 0,
+    }
+    imported_documents = []
+    skipped_documents = []
+    try:
+        legal_ledger.update_evidence_import_job(case_id, job_id, {
+            'status': 'running',
+            'stage': f'Searching {"Gmail" if source == "gmail" else "Google Drive"}',
+        }, actor=actor)
+        token_response = google_token_store.load(actor, 'google')
+        if not token_response:
+            raise GoogleEvidenceError('Google is not connected for this local LARO account')
+        config = google_oauth_config()
+        if not config['configured']:
+            raise GoogleEvidenceError('Google OAuth is not configured on this local LARO installation')
+        connector = GoogleEvidenceConnector(
+            token_response,
+            client_id=config['client_id'],
+            client_secret=config['client_secret'],
+            scopes=GOOGLE_SCOPES,
+        )
+        records, refreshed_token = connector.fetch(
+            source,
+            query,
+            max_items,
+            days_back=days_back,
+            sort_order=sort_order,
+        )
+        if refreshed_token:
+            google_token_store.save(actor, 'google', refreshed_token)
+
+        records = list(records or [])
+        total_words = sum(_google_record_word_count(record) for record in records if isinstance(record, dict))
+        estimated_seconds = max(3, min(900, len(records) * 2 + ((total_words + 159) // 160)))
+        legal_ledger.update_evidence_import_job(case_id, job_id, {
+            'stage': f'Found {len(records)} source item{"s" if len(records) != 1 else ""}; reading locally',
+            'total_items': len(records),
+            'total_words': total_words,
+            'estimated_total_seconds': estimated_seconds,
+        }, actor=actor)
+
+        for index, record in enumerate(records):
+            if not isinstance(record, dict):
+                skipped_documents.append({'index': index, 'reason': 'record_must_be_object'})
+                legal_ledger.update_evidence_import_job(case_id, job_id, {
+                    'stage': f'Skipped invalid source item {index + 1} of {len(records)}',
+                    'completed_items': index + 1,
+                    'skipped_count': len(skipped_documents),
+                }, actor=actor)
+                continue
+            title = str(record.get('title') or record.get('original_filename') or f'Source item {index + 1}')
+            legal_ledger.update_evidence_import_job(case_id, job_id, {
+                'stage': f'Reading source item {index + 1} of {len(records)}',
+                'current_item': title[:255],
+            }, actor=actor)
+            partial = _import_source_records(
+                case_id,
+                import_data,
+                [record],
+                source_type='google',
+                meta_tag=query,
+                actor=actor,
+            )
+            imported_documents.extend(partial.get('imported_documents') or [])
+            skipped_documents.extend(partial.get('skipped_documents') or [])
+            _merge_import_artifacts(artifacts, partial.get('artifact_counts') or {})
+            legal_ledger.update_evidence_import_job(case_id, job_id, {
+                'stage': f'Analysed source item {index + 1} of {len(records)}',
+                'completed_items': index + 1,
+                'processed_words': min(total_words, sum(_google_record_word_count(item) for item in records[:index + 1] if isinstance(item, dict))),
+                'imported_count': len(imported_documents),
+                'skipped_count': len(skipped_documents),
+                'current_item': title[:255],
+            }, actor=actor)
+
+        result = {
+            'case_id': case_id,
+            'source_type': 'google',
+            'meta_tag': query,
+            'imported_count': len(imported_documents),
+            'skipped_count': len(skipped_documents),
+            'artifact_counts': artifacts,
+            'connector': {
+                'provider': 'google',
+                'source': source,
+                'mode': 'read_only',
+                'credentials_refreshed': bool(refreshed_token),
+            },
+        }
+        legal_ledger.record_case_activity(
+            case_id,
+            'google_sources_pulled',
+            actor=actor,
+            source='google_readonly_connector',
+            details={
+                'source': source,
+                'query': query,
+                'days_back': days_back,
+                'sort_order': sort_order,
+                'fetched_count': len(records),
+                'imported_count': result['imported_count'],
+                'skipped_count': result['skipped_count'],
+                'credentials_refreshed': bool(refreshed_token),
+                'job_id': job_id,
+            },
+            risk_level='medium',
+        )
+        legal_ledger.update_evidence_import_job(case_id, job_id, {
+            'status': 'completed',
+            'stage': 'Evidence imported and case ledger refreshed',
+            'completed_items': len(records),
+            'processed_words': total_words,
+            'imported_count': result['imported_count'],
+            'skipped_count': result['skipped_count'],
+            'result': result,
+        }, actor=actor)
+    except (GoogleEvidenceError, TokenStoreError, ValueError) as exc:
+        legal_ledger.update_evidence_import_job(case_id, job_id, {
+            'status': 'failed',
+            'stage': 'Google evidence import needs attention',
+            'error': str(exc),
+            'imported_count': len(imported_documents),
+            'skipped_count': len(skipped_documents),
+        }, actor=actor)
+    except Exception:
+        logger.exception('Google evidence import job failed')
+        legal_ledger.update_evidence_import_job(case_id, job_id, {
+            'status': 'failed',
+            'stage': 'Google evidence import failed unexpectedly',
+            'error': 'Local Google evidence import failed unexpectedly. Review the connection and try again.',
+            'imported_count': len(imported_documents),
+            'skipped_count': len(skipped_documents),
+        }, actor=actor)
+
+
+def _readable_case_analysis_documents(case_id):
+    return [
+        item for item in legal_ledger.list_documents(case_id)
+        if str(item.get('extracted_text') or item.get('ocr_text') or '').strip()
+    ]
+
+
+def _case_analysis_workload(documents):
+    source_texts = [str(item.get('extracted_text') or item.get('ocr_text') or '') for item in documents]
+    total_words = sum(len(re.findall(r'\S+', text)) for text in source_texts)
+    total_characters = sum(len(re.sub(r'\s+', ' ', text).strip()) for text in source_texts)
+    provider = document_intelligence.semantic_provider.provider
+    if provider == 'ollama':
+        estimated_seconds = max(8, min(43200, int(total_words / 90) + (len(documents) * 3)))
+    else:
+        estimated_seconds = max(2, min(900, int(total_words / 10000) + len(documents)))
+    return {
+        'provider': provider,
+        'model': document_intelligence.semantic_provider.model,
+        'total_documents': len(documents),
+        'total_words': total_words,
+        'total_characters': total_characters,
+        'estimated_total_seconds': estimated_seconds,
+    }
+
+
+def _persist_case_analysis_run(case_id, analysis, actor):
+    return legal_ledger.create_case_analysis_run(case_id, {
+        'analysis_type': 'cross_document',
+        'status': analysis.get('status') or 'needs_review',
+        'provider': analysis.get('provider') or 'rule_based',
+        'model': analysis.get('model') or '',
+        'content': analysis,
+        'source_documents': analysis.get('source_documents') or [],
+    }, actor=actor)
+
+
+def _run_case_analysis_job(job_id, case_id, actor):
+    """Run an inspectable full-source analysis without keeping a request open."""
+    try:
+        ledger_case = legal_ledger.get_case(case_id)
+        if not ledger_case:
+            raise ValueError('Case not found')
+        documents = _readable_case_analysis_documents(case_id)
+        if not documents:
+            raise ValueError('No readable source documents are available. Recover source text before running a case-wide analysis.')
+        workload = _case_analysis_workload(documents)
+        legal_ledger.update_case_analysis_job(case_id, job_id, {
+            **workload,
+            'status': 'running',
+            'stage': 'Preparing every readable source for local analysis',
+        }, actor=actor)
+
+        def record_progress(progress):
+            total_chunks = max(0, int(progress.get('total_chunks') or 0))
+            total_words = max(0, int(progress.get('total_words') or workload['total_words']))
+            estimated_seconds = workload['estimated_total_seconds']
+            if workload['provider'] == 'ollama' and total_chunks:
+                estimated_seconds = max(8, min(43200, total_chunks * max(5, int(total_words / max(1, total_chunks * 90)) + 3)))
+            legal_ledger.update_case_analysis_job(case_id, job_id, {
+                'status': 'running',
+                'stage': str(progress.get('stage') or 'Reading local source batches')[:255],
+                'current_item': str(progress.get('current_item') or '')[:255],
+                'total_documents': max(0, int(progress.get('total_documents') or workload['total_documents'])),
+                'completed_documents': max(0, int(progress.get('completed_documents') or 0)),
+                'total_chunks': total_chunks,
+                'completed_chunks': max(0, int(progress.get('completed_chunks') or 0)),
+                'total_words': total_words,
+                'processed_words': max(0, int(progress.get('processed_words') or 0)),
+                'total_characters': max(0, int(progress.get('total_characters') or workload['total_characters'])),
+                'processed_characters': max(0, int(progress.get('processed_characters') or 0)),
+                'estimated_total_seconds': estimated_seconds,
+            }, actor=actor)
+
+        analysis = document_intelligence.semantic_provider.analyze_case(
+            documents,
+            ledger_case,
+            progress_callback=record_progress,
+        )
+        if analysis.get('status') != 'completed':
+            raise ValueError((analysis.get('limitations') or ['Case-wide local analysis is not available.'])[0])
+        run = _persist_case_analysis_run(case_id, analysis, actor)
+        if not run:
+            raise ValueError('Case not found')
+        coverage = analysis.get('source_coverage') or {}
+        result = {
+            'run_id': run['id'],
+            'findings_count': len((analysis.get('findings') or [])),
+            'review_questions_count': len((analysis.get('review_questions') or [])),
+            'timeline_suggestions_count': len((analysis.get('timeline_suggestions') or [])),
+            'source_coverage': coverage,
+            'requires_human_review': True,
+            'source_preserved': True,
+        }
+        legal_ledger.update_case_analysis_job(case_id, job_id, {
+            'status': 'completed',
+            'stage': 'Full-source reading stored for cited review',
+            'current_item': '',
+            'completed_documents': workload['total_documents'],
+            'completed_chunks': int(coverage.get('chunks_total') or analysis.get('analysis_batches') or workload['total_documents']),
+            'total_chunks': int(coverage.get('chunks_total') or analysis.get('analysis_batches') or workload['total_documents']),
+            'processed_words': workload['total_words'],
+            'processed_characters': workload['total_characters'],
+            'run_id': run['id'],
+            'result': result,
+        }, actor=actor)
+        legal_ledger.record_case_activity(
+            case_id,
+            'full_source_case_analysis_completed',
+            actor=actor,
+            source='local_case_analysis_job',
+            details={
+                'job_id': job_id,
+                'run_id': run['id'],
+                'provider': analysis.get('provider') or 'rule_based',
+                'model': analysis.get('model') or '',
+                'source_documents': int(coverage.get('sources_readable') or workload['total_documents']),
+                'coverage_percent': coverage.get('coverage_percent'),
+                'analysis_batches': analysis.get('analysis_batches'),
+            },
+            risk_level='low',
+        )
+    except ValueError as exc:
+        legal_ledger.update_case_analysis_job(case_id, job_id, {
+            'status': 'failed',
+            'stage': 'Full-source analysis needs attention',
+            'error': str(exc),
+        }, actor=actor)
+    except Exception:
+        logger.exception('Full-source case analysis job failed')
+        legal_ledger.update_case_analysis_job(case_id, job_id, {
+            'status': 'failed',
+            'stage': 'Full-source analysis failed unexpectedly',
+            'error': 'Local case analysis failed unexpectedly. The source documents were not changed; review the local model and try again.',
+        }, actor=actor)
+
+
+def _stage_document_inbox_source(data):
+    """Analyze and persist a source before its case is known."""
+    payload = dict(data or {})
+    text = str(payload.get('extracted_text') or payload.get('ocr_text') or payload.get('content') or '')
+    title = (
+        payload.get('title')
+        or payload.get('original_filename')
+        or payload.get('document_name')
+        or 'Untitled inbox document'
+    )
+    if not text.strip() and not payload.get('local_path') and title == 'Untitled inbox document':
+        raise ValueError('Add source text or choose a local file before staging a document')
+
+    analysis = document_intelligence.analyze_text(
+        text,
+        document_name=title,
+        metadata={
+            **(payload.get('metadata') or {}),
+            'source_type': payload.get('source_type') or payload.get('source') or 'manual_text',
+            'source_uri': payload.get('source_uri') or '',
+            'original_filename': payload.get('original_filename') or title,
+            'document_type': payload.get('document_type') or payload.get('type') or 'unknown',
+            'sender': payload.get('sender') or payload.get('from') or '',
+            'recipient': payload.get('recipient') or payload.get('to') or '',
+            'date_on_document': payload.get('date_on_document') or payload.get('document_date') or '',
+        },
+        case_context=None,
+    ) if text.strip() else {
+        'document_type': payload.get('document_type') or payload.get('type') or 'unreadable_source',
+        'summary': '',
+        'topics': [],
+        'facts': {},
+        'processing': {'word_count': 0, 'readable': False, 'analysis_method': 'metadata_only'},
+    }
+    staged_payload = {
+        **payload,
+        'title': title,
+        'source_type': payload.get('source_type') or payload.get('source') or 'manual_text',
+        'document_type': analysis.get('document_type') or payload.get('document_type') or 'unknown',
+        'summary': analysis.get('summary') or payload.get('summary') or '',
+        'extracted_text': text,
+        'analysis': analysis,
+        'metadata': {
+            **(payload.get('metadata') or {}),
+            'document_inbox': True,
+            'case_assignment_requires_review': True,
+        },
+    }
+    matches = rank_document_cases(
+        {**staged_payload, 'analysis': analysis},
+        legal_ledger.list_cases(_ledger_actor()),
+        limit=3,
+    )
+    item = legal_ledger.stage_document_inbox_item(
+        _ledger_actor(),
+        staged_payload,
+        suggested_matches=matches,
+        email=session.get('user_email'),
+        actor=_ledger_actor(),
+    )
+    return {
+        'item': item,
+        'analysis': analysis,
+        'suggested_matches': item.get('suggested_matches') or [],
+        'requires_human_review': True,
+        'external_action_taken': False,
+        'source_preserved': True,
+    }
+
+
 @app.route('/api/health', methods=['GET'])
 def health():
     """Local readiness check for the Flask app and legal ledger."""
@@ -1113,6 +1755,145 @@ def lookup_ledger_case_identifier():
     return jsonify(match), 200
 
 
+@app.route('/api/document-inbox', methods=['GET'])
+@auth_system._require_auth
+def list_document_inbox():
+    status = request.args.get('status')
+    items = legal_ledger.list_document_inbox_items(
+        _ledger_actor(),
+        status=status,
+        limit=request.args.get('limit', 50),
+    )
+    return jsonify({
+        'items': items,
+        'count': len(items),
+        'needs_review_count': sum(1 for item in items if item.get('status') == 'needs_review'),
+    }), 200
+
+
+@app.route('/api/document-inbox', methods=['POST'])
+@auth_system._require_auth
+def stage_document_inbox():
+    try:
+        result = _stage_document_inbox_source(request.json or {})
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    db_manager.invalidate_cache('documents')
+    return jsonify(result), 200 if result['item'].get('duplicate') else 201
+
+
+@app.route('/api/document-inbox/upload', methods=['POST'])
+@auth_system._require_auth
+def upload_document_inbox():
+    file_item = request.files.get('file')
+    if not file_item or not file_item.filename:
+        return jsonify({'error': 'A file field named file is required'}), 400
+    stored = _store_inbox_upload_file(_ledger_actor(), file_item)
+    extracted_text = document_intelligence.extract_text_from_file(stored['local_path'])
+    try:
+        result = _stage_document_inbox_source({
+            'source_type': request.form.get('source_type') or 'manual_upload',
+            'source_uri': f"local://document-inbox/{stored['content_hash'][:20]}/{stored['stored_name']}",
+            'original_filename': stored['original_name'],
+            'local_path': stored['local_path'],
+            'content_hash': stored['content_hash'],
+            'document_type': stored['extension'],
+            'title': request.form.get('title') or stored['original_name'],
+            'extracted_text': extracted_text,
+            'confidentiality_level': request.form.get('confidentiality_level') or 'normal',
+            'metadata': {
+                'stored_name': stored['stored_name'],
+                'size_bytes': stored['size_bytes'],
+                'upload_mode': 'case_neutral_document_inbox',
+            },
+        })
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    db_manager.invalidate_cache('documents')
+    result['storage'] = {
+        'content_hash': stored['content_hash'],
+        'size_bytes': stored['size_bytes'],
+        'kept_local': True,
+    }
+    return jsonify(result), 200 if result['item'].get('duplicate') else 201
+
+
+@app.route('/api/document-inbox/<int:item_id>', methods=['GET'])
+@auth_system._require_auth
+def get_document_inbox_item(item_id):
+    item = legal_ledger.get_document_inbox_item(item_id, _ledger_actor())
+    if not item:
+        return jsonify({'error': 'Inbox document not found'}), 404
+    return jsonify(item), 200
+
+
+@app.route('/api/document-inbox/<int:item_id>', methods=['PATCH'])
+@auth_system._require_auth
+def review_document_inbox_item(item_id):
+    try:
+        item = legal_ledger.review_document_inbox_item(
+            item_id,
+            _ledger_actor(),
+            (request.json or {}).get('action'),
+            actor=_ledger_actor(),
+        )
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    if not item:
+        return jsonify({'error': 'Inbox document not found'}), 404
+    db_manager.invalidate_cache('documents')
+    return jsonify(item), 200
+
+
+@app.route('/api/document-inbox/<int:item_id>/link', methods=['POST'])
+@auth_system._require_auth
+def link_document_inbox_item(item_id):
+    try:
+        case_id = int((request.json or {}).get('case_id'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'A valid case_id is required'}), 400
+    if not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    try:
+        result = legal_ledger.link_document_inbox_item(
+            item_id,
+            case_id,
+            _ledger_actor(),
+            actor=_ledger_actor(),
+        )
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    if not result or not result.get('document'):
+        return jsonify({'error': 'Inbox document or case not found'}), 404
+
+    artifacts = {
+        'timeline_suggestions': [],
+        'deadline_suggestions': [],
+        'obligation_suggestions': [],
+        'open_loop_suggestions': [],
+        'claim_suggestions': [],
+        'contradiction_suggestions': [],
+        'missing_evidence_suggestions': [],
+        'evidence_links': [],
+        'evidence_links_created': 0,
+    }
+    if result.get('created') and result.get('analysis'):
+        artifacts = _analysis_artifacts_for_document(
+            case_id,
+            result['document'],
+            result['analysis'],
+            _ledger_actor(),
+        )
+    db_manager.invalidate_cache('documents')
+    return jsonify({
+        **result,
+        **artifacts,
+        'source_preserved': True,
+        'requires_human_review': True,
+        'external_action_taken': False,
+    }), 201 if result.get('created') else 200
+
+
 @app.route('/api/cases/<int:case_id>/documents', methods=['GET'])
 @auth_system._require_auth
 def list_ledger_documents(case_id):
@@ -1141,6 +1922,9 @@ def create_ledger_document(case_id):
                 'source_type': data.get('source_type') or 'manual_text',
                 'original_filename': data.get('original_filename') or document_name,
                 'document_type': data.get('document_type') or 'manual_note',
+                'sender': data.get('sender') or '',
+                'recipient': data.get('recipient') or '',
+                'date_on_document': data.get('date_on_document') or '',
             },
             case_context=ledger_case,
         )
@@ -1191,60 +1975,163 @@ def import_ledger_source_documents(case_id):
 
     source_type = data.get('source_type') or data.get('source') or 'external_source'
     meta_tag = data.get('meta_tag') or data.get('tag') or data.get('query') or ''
+    return jsonify(_import_source_records(
+        case_id,
+        data,
+        records,
+        source_type=source_type,
+        meta_tag=meta_tag,
+        actor=_ledger_actor(),
+    )), 201
+
+
+@app.route('/api/cases/<int:case_id>/documents/pull-google', methods=['POST'])
+@auth_system._require_auth
+def pull_google_case_documents(case_id):
+    """Read explicitly queried Gmail/Drive items into one local case ledger."""
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+
+    data = request.json or {}
+    source = str(data.get('source') or 'gmail').strip().lower()
+    query = str(data.get('query') or data.get('meta_tag') or data.get('tag') or '').strip()
+    if not query:
+        return jsonify({'error': 'Enter a Gmail search or Google Drive query before pulling sources'}), 400
+
     actor = _ledger_actor()
-    existing_source_uris = {
-        item.get('source_uri')
-        for item in legal_ledger.list_documents(case_id)
-        if item.get('source_uri')
-    }
-    imported = []
-    skipped = []
-    artifact_counts = {
-        'timeline_suggestions': 0,
-        'deadline_suggestions': 0,
-        'open_loop_suggestions': 0,
-        'claim_suggestions': 0,
-        'contradiction_suggestions': 0,
-        'missing_evidence_suggestions': 0,
-        'evidence_links': 0,
-    }
+    try:
+        token_response = google_token_store.load(actor, 'google')
+    except TokenStoreError as exc:
+        return jsonify({'error': str(exc)}), 503
+    if not token_response:
+        return jsonify({'error': 'Google is not connected for this local LARO account'}), 409
 
-    for index, record in enumerate(records):
-        if not isinstance(record, dict):
-            skipped.append({'index': index, 'reason': 'record_must_be_object'})
-            continue
-        source_id = record.get('source_id') or record.get('id') or record.get('message_id') or record.get('file_id')
-        normalized_source_type = record.get('source_type') or record.get('source') or source_type
-        source_uri = _source_record_uri(normalized_source_type, source_id, record)
-        if source_uri and source_uri in existing_source_uris:
-            skipped.append({'index': index, 'source_uri': source_uri, 'reason': 'duplicate_source_uri'})
-            continue
+    config = google_oauth_config()
+    if not config['configured']:
+        return jsonify({'error': 'Google OAuth is not configured on this local LARO installation'}), 503
 
-        result = _persist_imported_source_document(case_id, record, normalized_source_type, meta_tag, actor, data)
-        if not result:
-            skipped.append({'index': index, 'source_uri': source_uri, 'reason': 'not_persisted'})
-            continue
+    try:
+        connector = GoogleEvidenceConnector(
+            token_response,
+            client_id=config['client_id'],
+            client_secret=config['client_secret'],
+            scopes=GOOGLE_SCOPES,
+        )
+        records, refreshed_token = connector.fetch(source, query, data.get('max_items', 50))
+        if refreshed_token:
+            google_token_store.save(actor, 'google', refreshed_token)
+    except (GoogleEvidenceError, TokenStoreError) as exc:
+        return jsonify({'error': str(exc)}), 502
 
-        document = result['document']
-        if document.get('source_uri'):
-            existing_source_uris.add(document['source_uri'])
-        imported.append(result)
-        for key in artifact_counts:
-            value = result.get(key)
-            artifact_counts[key] += len(value) if isinstance(value, list) else int(value or 0)
-
-    db_manager.invalidate_cache('documents')
+    result = _import_source_records(
+        case_id,
+        data,
+        records,
+        source_type='google',
+        meta_tag=query,
+        actor=actor,
+    )
+    legal_ledger.record_case_activity(
+        case_id,
+        'google_sources_pulled',
+        actor=actor,
+        source='google_readonly_connector',
+        details={
+            'source': source,
+            'query': query,
+            'fetched_count': len(records),
+            'imported_count': result['imported_count'],
+            'skipped_count': result['skipped_count'],
+            'credentials_refreshed': bool(refreshed_token),
+        },
+        risk_level='medium',
+    )
     return jsonify({
-        'case_id': case_id,
-        'source_type': source_type,
-        'meta_tag': meta_tag,
-        'imported_count': len(imported),
-        'skipped_count': len(skipped),
-        'imported_documents': imported,
-        'skipped_documents': skipped,
-        'artifact_counts': artifact_counts,
-        'comprehension': legal_ledger.case_comprehension_dossier(case_id),
+        **result,
+        'connector': {
+            'provider': 'google',
+            'source': source,
+            'mode': 'read_only',
+            'credentials_refreshed': bool(refreshed_token),
+        },
     }), 201
+
+
+@app.route('/api/cases/<int:case_id>/documents/pull-google/jobs', methods=['POST'])
+@auth_system._require_auth
+def start_google_case_document_pull_job(case_id):
+    """Start a durable, read-only Google pull that the local UI can poll for real progress."""
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    data = request.json or {}
+    source = str(data.get('source') or 'gmail').strip().lower()
+    query = str(data.get('query') or data.get('meta_tag') or data.get('tag') or '').strip()
+    if source not in {'gmail', 'google_drive'}:
+        return jsonify({'error': 'source must be gmail or google_drive'}), 400
+    if not query:
+        return jsonify({'error': 'Enter a Gmail search or Google Drive query before pulling sources'}), 400
+    try:
+        max_items = min(100, max(1, int(data.get('max_items') or 50)))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'max_items must be a number between 1 and 100'}), 400
+    raw_days_back = data.get('days_back')
+    if raw_days_back in {None, ''}:
+        days_back = None
+    else:
+        try:
+            days_back = min(3650, max(1, int(raw_days_back)))
+        except (TypeError, ValueError):
+            return jsonify({'error': 'days_back must be a number between 1 and 3650'}), 400
+    sort_order = str(data.get('sort_order') or 'newest').strip().lower()
+    if sort_order not in {'newest', 'oldest'}:
+        return jsonify({'error': 'sort_order must be newest or oldest'}), 400
+
+    actor = _ledger_actor()
+    try:
+        token_response = google_token_store.load(actor, 'google')
+    except TokenStoreError as exc:
+        return jsonify({'error': str(exc)}), 503
+    if not token_response:
+        return jsonify({'error': 'Google is not connected for this local LARO account'}), 409
+    if not google_oauth_config()['configured']:
+        return jsonify({'error': 'Google OAuth is not configured on this local LARO installation'}), 503
+
+    job_data = {
+        'provider': 'google',
+        'source': source,
+        'query': query,
+        'max_items': max_items,
+        'days_back': days_back,
+        'sort_order': sort_order,
+        'confidentiality_level': data.get('confidentiality_level') or 'normal',
+    }
+    job = legal_ledger.create_evidence_import_job(case_id, job_data, actor=actor)
+    if not job:
+        return jsonify({'error': 'Case not found'}), 404
+    google_pull_executor.submit(_run_google_pull_job, job['job_id'], case_id, job_data, actor)
+    return jsonify({
+        'job': job,
+        'status_url': f'/api/cases/{case_id}/documents/pull-google/jobs/{job["job_id"]}',
+        'message': 'Google evidence pull started locally. LARO will show actual source and word progress as records arrive.',
+    }), 202
+
+
+@app.route('/api/cases/<int:case_id>/documents/pull-google/jobs', methods=['GET'])
+@auth_system._require_auth
+def list_google_case_document_pull_jobs(case_id):
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    status = request.args.get('status')
+    return jsonify({'jobs': legal_ledger.list_evidence_import_jobs(case_id, status=status)}), 200
+
+
+@app.route('/api/cases/<int:case_id>/documents/pull-google/jobs/<int:job_id>', methods=['GET'])
+@auth_system._require_auth
+def get_google_case_document_pull_job(case_id, job_id):
+    job = legal_ledger.get_evidence_import_job(case_id, job_id)
+    if not job:
+        return jsonify({'error': 'Google evidence import job not found'}), 404
+    return jsonify({'job': job}), 200
 
 
 @app.route('/api/cases/<int:case_id>/documents/<int:document_id>', methods=['GET'])
@@ -1258,6 +2145,252 @@ def get_ledger_document(case_id, document_id):
         'document': document,
         'can_open_file': can_open_file,
         'file_url': f'/api/cases/{case_id}/documents/{document_id}/file' if can_open_file else None,
+    }), 200
+
+
+@app.route('/api/cases/<int:case_id>/documents/<int:document_id>/versions', methods=['GET'])
+@auth_system._require_auth
+def list_ledger_document_versions(case_id, document_id):
+    versions = legal_ledger.list_document_versions(case_id, document_id)
+    if versions is None:
+        return jsonify({'error': 'Document not found'}), 404
+    return jsonify({'case_id': case_id, 'document_id': document_id, 'versions': versions}), 200
+
+
+@app.route('/api/cases/<int:case_id>/documents/<int:document_id>/recover-text', methods=['POST'])
+@auth_system._require_auth
+def recover_ledger_document_text(case_id, document_id):
+    """Analyze recovered text while preserving the original source and extraction history."""
+    ledger_case = legal_ledger.get_case(case_id)
+    document = legal_ledger.get_document(case_id, document_id)
+    if not ledger_case or not document:
+        return jsonify({'error': 'Document not found'}), 404
+    data = request.json or {}
+    recovered_text = str(data.get('extracted_text') or data.get('ocr_text') or data.get('content') or '').strip()
+    extraction_method = str(data.get('extraction_method') or '').strip()
+    if not recovered_text:
+        local_path = document.get('local_path') or ''
+        if local_path and _safe_served_upload_path(local_path):
+            recovered_text = document_intelligence.extract_text_from_file(local_path)
+            extraction_method = extraction_method or 'local_file_reextract'
+    if not recovered_text:
+        return jsonify({
+            'error': 'No readable text is available from this source. Paste recovered text or upload a text-readable copy.',
+            'source_preserved': True,
+        }), 409
+
+    analysis = document_intelligence.analyze_text(
+        recovered_text,
+        document_name=document.get('title') or document.get('original_filename') or 'Recovered evidence text',
+        metadata={
+            **(document.get('metadata') or {}),
+            'source_type': document.get('source_type'),
+            'original_filename': document.get('original_filename'),
+            'document_type': document.get('document_type'),
+            'sender': document.get('sender'),
+            'recipient': document.get('recipient'),
+        },
+        case_context=ledger_case,
+    )
+    was_readable = bool(str(document.get('extracted_text') or document.get('ocr_text') or '').strip())
+    recovered = legal_ledger.update_document_extraction(case_id, document_id, {
+        'extracted_text': recovered_text,
+        'ocr_text': data.get('ocr_text') or '',
+        'summary': analysis.get('summary') or document.get('summary') or '',
+        'relevance_score': (analysis.get('evidence') or {}).get('relevance_score', document.get('relevance_score') or 0),
+        'extraction_method': extraction_method or 'manual_text_recovery',
+        'metadata': {
+            **(document.get('metadata') or {}),
+            'legal_analysis': analysis,
+        },
+    }, actor=_ledger_actor())
+    if not recovered:
+        return jsonify({'error': 'Document not found'}), 404
+    artifacts = _analysis_artifacts_for_document(
+        case_id,
+        recovered,
+        analysis,
+        _ledger_actor(),
+        {
+            **data,
+            'create_timeline_suggestions': not was_readable or _enabled_flag(data, 'force_rebuild_artifacts', False),
+            'create_review_items': not was_readable or _enabled_flag(data, 'force_rebuild_artifacts', False),
+            'create_claim_suggestions': not was_readable or _enabled_flag(data, 'force_rebuild_artifacts', False),
+            'create_gap_suggestions': not was_readable or _enabled_flag(data, 'force_rebuild_artifacts', False),
+        },
+    )
+    return jsonify({
+        'document': recovered,
+        'analysis': analysis,
+        'source_preserved': True,
+        'created_artifacts': not was_readable or _enabled_flag(data, 'force_rebuild_artifacts', False),
+        **artifacts,
+    }), 200
+
+
+@app.route('/api/cases/<int:case_id>/documents/<int:document_id>/reanalyze', methods=['POST'])
+@auth_system._require_auth
+def reanalyze_ledger_document(case_id, document_id):
+    """Refresh derived source analysis without changing the document or extraction version."""
+    ledger_case = legal_ledger.get_case(case_id)
+    document = legal_ledger.get_document(case_id, document_id)
+    if not ledger_case or not document:
+        return jsonify({'error': 'Document not found'}), 404
+    text = str(document.get('extracted_text') or document.get('ocr_text') or '').strip()
+    if not text:
+        return jsonify({
+            'error': 'No readable text is available to analyze. Recover text first while preserving the original source.',
+            'source_preserved': True,
+        }), 409
+    analysis = document_intelligence.analyze_text(
+        text,
+        document_name=document.get('title') or document.get('original_filename') or 'Source document',
+        metadata={
+            **(document.get('metadata') or {}),
+            'source_type': document.get('source_type'),
+            'original_filename': document.get('original_filename'),
+            'document_type': document.get('document_type'),
+            'sender': document.get('sender'),
+            'recipient': document.get('recipient'),
+        },
+        case_context=ledger_case,
+    )
+    refreshed = legal_ledger.update_document_analysis(case_id, document_id, {
+        'legal_analysis': analysis,
+        'summary': analysis.get('summary') or document.get('summary') or '',
+        'relevance_score': (analysis.get('evidence') or {}).get('relevance_score', document.get('relevance_score') or 0),
+    }, actor=_ledger_actor())
+    if not refreshed:
+        return jsonify({'error': 'Document not found'}), 404
+    return jsonify({
+        'document': refreshed,
+        'analysis': analysis,
+        'source_preserved': True,
+        'extraction_version_unchanged': True,
+        'created_artifacts': False,
+    }), 200
+
+
+@app.route('/api/cases/<int:case_id>/case-analysis', methods=['GET'])
+@auth_system._require_auth
+def list_ledger_case_analysis(case_id):
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    runs = legal_ledger.list_case_analysis_runs(case_id)
+    return jsonify({'case_id': case_id, 'runs': runs, 'latest': runs[0] if runs else None}), 200
+
+
+@app.route('/api/cases/<int:case_id>/case-analysis/jobs', methods=['POST'])
+@auth_system._require_auth
+def start_ledger_case_analysis_job(case_id):
+    """Start or resume one durable full-source local analysis for this case."""
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    documents = _readable_case_analysis_documents(case_id)
+    if not documents:
+        return jsonify({
+            'error': 'No readable source documents are available. Recover source text before running a case-wide analysis.',
+            'source_preserved': True,
+        }), 409
+    active = next((
+        item for item in legal_ledger.list_case_analysis_jobs(case_id)
+        if item.get('status') in {'queued', 'running'}
+    ), None)
+    if active:
+        return jsonify({
+            'job': active,
+            'status_url': f'/api/cases/{case_id}/case-analysis/jobs/{active["job_id"]}',
+            'reused_active_job': True,
+        }), 200
+    actor = _ledger_actor()
+    job = legal_ledger.create_case_analysis_job(
+        case_id,
+        _case_analysis_workload(documents),
+        actor=actor,
+    )
+    if not job:
+        return jsonify({'error': 'Case not found'}), 404
+    case_analysis_executor.submit(_run_case_analysis_job, job['job_id'], case_id, actor)
+    return jsonify({
+        'job': job,
+        'status_url': f'/api/cases/{case_id}/case-analysis/jobs/{job["job_id"]}',
+        'message': 'Full-source local analysis started. LARO will show actual document, batch, word, and time progress.',
+        'reused_active_job': False,
+    }), 202
+
+
+@app.route('/api/cases/<int:case_id>/case-analysis/jobs', methods=['GET'])
+@auth_system._require_auth
+def list_ledger_case_analysis_jobs(case_id):
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    return jsonify({
+        'case_id': case_id,
+        'jobs': legal_ledger.list_case_analysis_jobs(case_id, status=request.args.get('status')),
+    }), 200
+
+
+@app.route('/api/cases/<int:case_id>/case-analysis/jobs/<int:job_id>', methods=['GET'])
+@auth_system._require_auth
+def get_ledger_case_analysis_job(case_id, job_id):
+    job = legal_ledger.get_case_analysis_job(case_id, job_id)
+    if not job:
+        return jsonify({'error': 'Case analysis job not found'}), 404
+    return jsonify({'job': job}), 200
+
+
+@app.route('/api/cases/<int:case_id>/case-analysis', methods=['POST'])
+@auth_system._require_auth
+def create_ledger_case_analysis(case_id):
+    """Create a review-only, cross-document local synthesis for this case."""
+    ledger_case = legal_ledger.get_case(case_id)
+    if not ledger_case:
+        return jsonify({'error': 'Case not found'}), 404
+    readable_documents = _readable_case_analysis_documents(case_id)
+    if not readable_documents:
+        return jsonify({
+            'error': 'No readable source documents are available. Recover source text before running a case-wide analysis.',
+            'source_preserved': True,
+        }), 409
+    analysis = document_intelligence.semantic_provider.analyze_case(readable_documents, ledger_case)
+    if analysis.get('status') != 'completed':
+        return jsonify({
+            'error': (analysis.get('limitations') or ['Case-wide local analysis is not available.'])[0],
+            'analysis': analysis,
+            'source_preserved': True,
+        }), 409
+    run = _persist_case_analysis_run(case_id, analysis, _ledger_actor())
+    if not run:
+        return jsonify({'error': 'Case not found'}), 404
+    return jsonify({
+        'run': run,
+        'source_preserved': True,
+        'created_artifacts': False,
+        'requires_human_review': True,
+    }), 201
+
+
+@app.route('/api/cases/<int:case_id>/case-analysis/review-items/<int:item_id>', methods=['PATCH'])
+@auth_system._require_auth
+def update_ledger_case_analysis_review_item(case_id, item_id):
+    """Apply a cited case-wide observation only after an explicit ledger choice."""
+    payload = request.json or {}
+    try:
+        item = legal_ledger.update_case_analysis_review_item(
+            case_id,
+            item_id,
+            payload,
+            actor=_ledger_actor(),
+        )
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    if not item:
+        return jsonify({'error': 'Case analysis review item not found'}), 404
+    return jsonify({
+        'review_item': item,
+        'source_preserved': True,
+        'confirmation_applied': payload.get('action') == 'confirm_timeline',
+        'requires_human_review': item.get('status') == 'converted' and payload.get('action') != 'confirm_timeline',
     }), 200
 
 
@@ -1379,10 +2512,22 @@ def list_ledger_claims(case_id):
 @app.route('/api/cases/<int:case_id>/claims', methods=['POST'])
 @auth_system._require_auth
 def create_ledger_claim(case_id):
-    claim = legal_ledger.add_claim(case_id, request.json or {}, actor=_ledger_actor())
+    try:
+        claim = legal_ledger.add_claim(case_id, request.json or {}, actor=_ledger_actor())
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
     if not claim:
         return jsonify({'error': 'Case not found'}), 404
     return jsonify(claim), 201
+
+
+@app.route('/api/cases/<int:case_id>/positions', methods=['GET'])
+@auth_system._require_auth
+def get_case_position_matrix(case_id):
+    matrix = legal_ledger.case_position_matrix(case_id)
+    if not matrix:
+        return jsonify({'error': 'Case not found'}), 404
+    return jsonify(matrix), 200
 
 
 @app.route('/api/cases/<int:case_id>/claims/<int:claim_id>', methods=['PATCH'])
@@ -1517,6 +2662,58 @@ def update_ledger_deadline(case_id, deadline_id):
     return jsonify(deadline), 200
 
 
+@app.route('/api/cases/<int:case_id>/obligations', methods=['GET'])
+@auth_system._require_auth
+def list_ledger_obligations(case_id):
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    return jsonify({'case_id': case_id, 'obligations': legal_ledger.list_obligations(case_id)}), 200
+
+
+@app.route('/api/cases/<int:case_id>/obligations', methods=['POST'])
+@auth_system._require_auth
+def create_ledger_obligation(case_id):
+    payload = request.json or {}
+    source_document_id = payload.get('source_document_id')
+    if source_document_id and not str(payload.get('source_quote') or '').strip():
+        return jsonify({'error': 'An exact source_quote is required when linking an obligation to a document'}), 400
+    try:
+        item = legal_ledger.add_obligation(case_id, payload, actor=_ledger_actor())
+    except (TypeError, ValueError) as exc:
+        return jsonify({'error': str(exc)}), 400
+    if not item:
+        return jsonify({'error': 'Case not found'}), 404
+    if source_document_id:
+        try:
+            link = legal_ledger.add_evidence_link(case_id, {
+                'document_id': source_document_id,
+                'target_type': 'obligation',
+                'target_id': item['id'],
+                'snippet': payload.get('source_quote') or '',
+                'relationship': 'states_obligation',
+                'strength': 'medium',
+                'source_confidence': payload.get('source_confidence') or 0.0,
+                'user_confirmed': False,
+            }, actor=_ledger_actor())
+            if link:
+                item['evidence_link'] = link
+        except (KeyError, TypeError, ValueError):
+            pass
+    return jsonify(item), 201
+
+
+@app.route('/api/cases/<int:case_id>/obligations/<int:obligation_id>', methods=['PATCH'])
+@auth_system._require_auth
+def update_ledger_obligation(case_id, obligation_id):
+    try:
+        item = legal_ledger.update_obligation(case_id, obligation_id, request.json or {}, actor=_ledger_actor())
+    except (TypeError, ValueError) as exc:
+        return jsonify({'error': str(exc)}), 400
+    if not item:
+        return jsonify({'error': 'Obligation not found'}), 404
+    return jsonify(item), 200
+
+
 @app.route('/api/cases/<int:case_id>/open-loops', methods=['GET'])
 @auth_system._require_auth
 def list_ledger_open_loops(case_id):
@@ -1608,6 +2805,23 @@ def create_ledger_draft(case_id):
     return jsonify(draft), 201
 
 
+@app.route('/api/cases/<int:case_id>/drafts/generate', methods=['POST'])
+@auth_system._require_auth
+def generate_ledger_case_draft(case_id):
+    """Create a local source-linked internal brief from the persisted case dossier."""
+    try:
+        draft = legal_ledger.generate_case_brief(
+            case_id,
+            (request.json or {}).get('draft_type') or 'lawyer_summary',
+            actor=_ledger_actor(),
+        )
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    if not draft:
+        return jsonify({'error': 'Case not found'}), 404
+    return jsonify({'draft': draft, 'source_preserved': True, 'external_action_taken': False}), 201
+
+
 @app.route('/api/cases/<int:case_id>/drafts/<int:draft_id>', methods=['GET'])
 @auth_system._require_auth
 def get_ledger_draft(case_id, draft_id):
@@ -1668,15 +2882,95 @@ def get_ledger_red_line(case_id):
 @app.route('/api/cases/<int:case_id>/bundle', methods=['GET'])
 @auth_system._require_auth
 def get_ledger_bundle(case_id):
+    if not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
     bundle = legal_ledger.case_bundle(case_id)
     if not bundle:
         return jsonify({'error': 'Case not found'}), 404
     return jsonify(bundle), 200
 
 
+@app.route('/api/cases/<int:case_id>/bundle/download', methods=['GET'])
+@auth_system._require_auth
+def download_ledger_bundle(case_id):
+    if not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    bundle = legal_ledger.case_bundle(case_id)
+    if not bundle:
+        return jsonify({'error': 'Case not found'}), 404
+    approval = bundle.get('external_sharing_approval') or {}
+    if not bundle.get('external_sharing_allowed'):
+        legal_ledger.record_case_activity(
+            case_id,
+            'case_bundle_export_blocked',
+            actor=_ledger_actor(),
+            source='bundle_export',
+            details={
+                'share_status': bundle.get('share_status'),
+                'approval_stale': bool(bundle.get('approval_stale')),
+                'bundle_snapshot_hash': bundle.get('bundle_snapshot_hash'),
+                'external_file_created': False,
+            },
+            risk_level='high',
+            approval_id=approval.get('id'),
+        )
+        return jsonify({
+            'error': 'A current approved bundle snapshot is required before download',
+            'approval_required': True,
+            'external_sharing_allowed': False,
+            'share_status': bundle.get('share_status'),
+            'approval_stale': bool(bundle.get('approval_stale')),
+        }), 409
+
+    try:
+        max_bytes = int(os.environ.get('LARO_BUNDLE_MAX_BYTES') or DEFAULT_MAX_BUNDLE_BYTES)
+    except (TypeError, ValueError):
+        max_bytes = DEFAULT_MAX_BUNDLE_BYTES
+    exporter = CaseBundleExporter(
+        safe_file_resolver=_safe_served_upload_path,
+        max_uncompressed_bytes=max_bytes,
+    )
+    try:
+        exported = exporter.build(bundle, bundle.get('document_index') or [])
+    except CaseBundleExportError as exc:
+        return jsonify({'error': str(exc)}), 409
+
+    manifest = exported['manifest']
+    legal_ledger.record_case_activity(
+        case_id,
+        'case_bundle_exported',
+        actor=_ledger_actor(),
+        source='bundle_export',
+        details={
+            'bundle_snapshot_hash': bundle.get('bundle_snapshot_hash'),
+            'archive_sha256': exported['archive_sha256'],
+            'archive_size_bytes': exported['archive_size_bytes'],
+            'entry_count': len(manifest.get('entries') or []),
+            'omitted_entry_count': len(manifest.get('omitted_entries') or []),
+            'external_message_sent': False,
+        },
+        risk_level='high',
+        approval_id=approval.get('id'),
+    )
+    response = send_file(
+        io.BytesIO(exported['archive_bytes']),
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name=exported['download_name'],
+        max_age=0,
+    )
+    response.headers['Cache-Control'] = 'no-store, max-age=0'
+    response.headers['X-LARO-Approval-Id'] = str(approval.get('id') or '')
+    response.headers['X-LARO-Bundle-SHA256'] = exported['archive_sha256']
+    response.headers['X-LARO-Snapshot-SHA256'] = str(bundle.get('bundle_snapshot_hash') or '')
+    return response
+
+
 @app.route('/api/cases/<int:case_id>/bundle/share-approval', methods=['POST'])
 @auth_system._require_auth
 def request_ledger_bundle_share_approval(case_id):
+    if not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
     approval = legal_ledger.request_case_bundle_share_approval(
         case_id,
         actor=_ledger_actor(),
@@ -1692,13 +2986,17 @@ def request_ledger_bundle_share_approval(case_id):
 def list_ledger_approvals():
     case_id = request.args.get('case_id', type=int)
     status = request.args.get('status')
-    approvals = legal_ledger.list_approvals(case_id=case_id, status=status)
+    if case_id is not None and not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    approvals = legal_ledger.list_approvals(case_id=case_id, status=status, external_user_id=_ledger_actor())
     return jsonify({'approvals': approvals, 'count': len(approvals)}), 200
 
 
 @app.route('/api/approvals/<int:approval_id>', methods=['PATCH'])
 @auth_system._require_auth
 def resolve_ledger_approval(approval_id):
+    if not legal_ledger.user_owns_approval(approval_id, _ledger_actor()):
+        return jsonify({'error': 'Approval not found'}), 404
     data = request.json or {}
     try:
         approval = legal_ledger.resolve_approval(
@@ -1718,7 +3016,9 @@ def resolve_ledger_approval(approval_id):
 @auth_system._require_auth
 def list_ledger_audit():
     case_id = request.args.get('case_id', type=int)
-    events = legal_ledger.list_audit_events(case_id=case_id)
+    if case_id is not None and not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+    events = legal_ledger.list_audit_events(case_id=case_id, external_user_id=_ledger_actor())
     return jsonify({'audit_events': events, 'count': len(events)}), 200
 
 # Static routes
@@ -1836,8 +3136,9 @@ def _dashboard_redirect(return_to, status, message=None, popup=False):
 @app.route('/api/google/oauth/status', methods=['GET'])
 def google_oauth_status():
     """Expose Google OAuth connection state for auto-updating dashboard UI."""
-    user_key = str(session.get('user_id', session.get('user_email', 'anonymous')))
-    connection = legal_ledger.get_external_connection(user_key, 'google') or google_connections.get(user_key, {})
+    user_key = _ledger_actor()
+    connection = legal_ledger.get_external_connection(user_key, 'google') or {}
+    credential_vault = google_token_store.status(user_key, 'google')
     connected = bool(connection.get('connected') or connection.get('status') == 'connected')
     config = google_oauth_config()
     return jsonify({
@@ -1846,7 +3147,8 @@ def google_oauth_status():
         'connected_at': connection.get('connected_at'),
         'scopes': connection.get('scopes') or GOOGLE_SCOPES,
         'authorize_url': '/api/google/oauth/start',
-        'status_source': 'legal_ledger' if connection and 'token_response' not in connection else 'runtime',
+        'status_source': 'legal_ledger',
+        'credential_vault': credential_vault,
         'message': (
             'Google OAuth is connected.'
             if connected
@@ -1896,14 +3198,13 @@ def google_oauth_callback():
         logger.exception('Google OAuth token exchange failed')
         return _dashboard_redirect(return_to, 'oauth_error', f'Token exchange failed: {exc}', popup=popup)
 
-    user_key = str(session.get('user_id', session.get('user_email', 'anonymous')))
-    connected_at = datetime.datetime.now(datetime.timezone.utc).isoformat().replace('+00:00', 'Z')
-    google_connections[user_key] = {
-        'connected': True,
-        'connected_at': connected_at,
-        'scopes': GOOGLE_SCOPES,
-        'token_response': token_response,
-    }
+    user_key = _ledger_actor()
+    try:
+        google_token_store.save(user_key, 'google', token_response)
+    except TokenStoreError as exc:
+        logger.warning('Google OAuth token could not be stored in the local encrypted vault: %s', exc)
+        return _dashboard_redirect(return_to, 'oauth_error', 'Google credentials could not be stored securely on this device.', popup=popup)
+
     legal_ledger.save_external_connection(
         user_key,
         'google',
@@ -1996,10 +3297,17 @@ def aggregate_documents():
     case_id = data['case_id']
     user_id = session.get('user_id', 0)
     
-    # Check if case exists in either the legacy mirror or the persistent ledger.
+    # Imported material is always attached to a persisted legal case.
     ledger_case = legal_ledger.get_case(case_id)
-    if case_id not in cases and not ledger_case:
+    if not ledger_case:
         return jsonify({'error': 'Case not found'}), 404
+    legacy_google_sources = {'gmail', 'gdrive', 'google_drive'}
+    if str(data.get('source') or '').strip().lower() in legacy_google_sources:
+        return jsonify({
+            'error': 'Google imports require the case-level read-only connector.',
+            'next_action': 'Connect Google, then use POST /api/cases/<case_id>/documents/pull-google with an explicit query.',
+            'read_only': True,
+        }), 409
     # Create document aggregator
     aggregator = DocumentAggregator(case_id=case_id, user_id=user_id)
     max_items = data.get('max_items', 80)
@@ -2142,6 +3450,7 @@ def aggregate_documents():
     persisted_evidence_links = []
     persisted_claims = []
     persisted_deadlines = []
+    persisted_obligations = []
     persisted_open_loops = []
     persisted_contradictions = []
     persisted_missing_evidence = []
@@ -2171,6 +3480,7 @@ def aggregate_documents():
             persisted_evidence_links.extend(artifacts.get('evidence_links', []))
             persisted_claims.extend(artifacts.get('claim_suggestions', []))
             persisted_deadlines.extend(artifacts.get('deadline_suggestions', []))
+            persisted_obligations.extend(artifacts.get('obligation_suggestions', []))
             persisted_open_loops.extend(artifacts.get('open_loop_suggestions', []))
             persisted_contradictions.extend(artifacts.get('contradiction_suggestions', []))
             persisted_missing_evidence.extend(artifacts.get('missing_evidence_suggestions', []))
@@ -2195,7 +3505,7 @@ def aggregate_documents():
     timeseries_manager.record_case_event(
         case_id=str(case_id),
         event_type='documents_aggregated',
-        category=(ledger_case or {}).get('legal_domain') or _field_id(((cases.get(case_id) or {}).get('matched_fields') or ['UNKNOWN'])[0]),
+        category=ledger_case.get('legal_domain') or 'UNKNOWN',
         user_id=str(user_id),
         details={
             'document_count': len(case_documents),
@@ -2219,6 +3529,7 @@ def aggregate_documents():
         'persisted_evidence_links': persisted_evidence_links,
         'persisted_claims': persisted_claims,
         'persisted_deadlines': persisted_deadlines,
+        'persisted_obligations': persisted_obligations,
         'persisted_open_loops': persisted_open_loops,
         'persisted_contradictions': persisted_contradictions,
         'persisted_missing_evidence': persisted_missing_evidence,
@@ -2229,33 +3540,9 @@ def aggregate_documents():
 @app.route('/api/documents/<int:case_id>', methods=['GET'])
 @auth_system._require_auth
 def get_documents(case_id):
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
     ledger_documents = legal_ledger.list_documents(case_id)
-    if ledger_documents:
-        user_id = session.get('user_id', 0)
-        timeseries_manager.record_user_activity(
-            user_id=str(user_id),
-            activity_type='view',
-            resource='documents',
-            details={
-                'case_id': case_id,
-                'document_count': len(ledger_documents),
-                'storage': 'legal_ledger',
-            }
-        )
-        return jsonify({
-            'case_id': case_id,
-            'documents': ledger_documents
-        }), 200
-
-    if case_id not in documents:
-        return jsonify({'error': 'No documents found for this case'}), 404
-    
-    # Use cached query for document retrieval
-    @db_manager.cached_query(ttl=60)
-    def get_cached_documents(case_id):
-        return documents[case_id]
-    
-    # Record document view event in time-series database
     user_id = session.get('user_id', 0)
     timeseries_manager.record_user_activity(
         user_id=str(user_id),
@@ -2263,59 +3550,51 @@ def get_documents(case_id):
         resource='documents',
         details={
             'case_id': case_id,
-            'document_count': len(documents[case_id])
+            'document_count': len(ledger_documents),
+            'storage': 'legal_ledger',
         }
     )
-    
     return jsonify({
         'case_id': case_id,
-        'documents': get_cached_documents(case_id)
+        'documents': ledger_documents,
+        'storage': 'legal_ledger',
     }), 200
 
 @app.route('/api/documents/<int:case_id>/analysis', methods=['GET'])
 @auth_system._require_auth
 def get_document_analysis(case_id):
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
     analyses = _ledger_document_analysis_snapshot(case_id)
-    if analyses:
-        return jsonify({
-            'case_id': case_id,
-            'document_count': len(analyses),
-            'analysis': analyses
-        }), 200
-
-    if case_id not in document_analysis:
-        return jsonify({'error': 'No document analysis found for this case'}), 404
-
-    analyses = document_analysis[case_id]
     return jsonify({
         'case_id': case_id,
         'document_count': len(analyses),
-        'analysis': analyses
+        'analysis': analyses,
+        'storage': 'legal_ledger',
     }), 200
 
 @app.route('/api/documents/<int:case_id>/timeline', methods=['GET'])
 @auth_system._require_auth
 def get_evidence_timeline(case_id):
+    if not legal_ledger.get_case(case_id):
+        return jsonify({'error': 'Case not found'}), 404
     ledger_timeline = legal_ledger.list_timeline(case_id)
-    if ledger_timeline:
-        comprehension = legal_ledger.case_comprehension_dossier(case_id) or {}
-        return jsonify({
-            'case_id': case_id,
-            'event_count': len(ledger_timeline),
-            'timeline': ledger_timeline,
-            'source_linked_timeline': comprehension.get('chronology', []),
-            'storage': 'legal_ledger',
-        }), 200
-
-    if case_id not in evidence_timelines:
-        return jsonify({'error': 'No evidence timeline found for this case'}), 404
-
-    timeline = evidence_timelines[case_id]
+    comprehension = legal_ledger.case_comprehension_dossier(case_id) or {}
     return jsonify({
         'case_id': case_id,
-        'event_count': len(timeline),
-        'timeline': timeline
+        'event_count': len(ledger_timeline),
+        'timeline': ledger_timeline,
+        'source_linked_timeline': comprehension.get('chronology', []),
+        'storage': 'legal_ledger',
     }), 200
+
+
+@app.route('/api/lawyers/taxonomy', methods=['GET'])
+@auth_system._require_auth
+def get_lawyer_matching_taxonomy():
+    """Expose the official NOvA-area vocabulary used by case matching."""
+    return jsonify(public_taxonomy()), 200
+
 
 @app.route('/api/lawyers/match', methods=['POST'])
 @auth_system._require_auth
@@ -2325,7 +3604,12 @@ def match_case_lawyers():
     if 'case_id' not in data:
         return jsonify({'error': 'Case ID is required'}), 400
 
-    case_id = int(data['case_id'])
+    try:
+        case_id = int(data['case_id'])
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Case ID must be a number'}), 400
+    if not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
     ledger_case, legacy_case = _case_for_legacy_endpoint(case_id)
     if not legacy_case:
         return jsonify({'error': 'Case not found'}), 404
@@ -2344,12 +3628,15 @@ def match_case_lawyers():
     if result.get('statusCode') != 200:
         return jsonify(result.get('body', {'error': 'Unable to match lawyers'})), result.get('statusCode', 500)
 
+    result['body'].setdefault('case_profile', case_data.get('case_profile') or {})
+
     legal_ledger.save_match_result(
         case_id,
         'lawyers',
         result['body'],
         criteria=case_data,
         actor=_ledger_actor(),
+        source=result['body'].get('source_mode') or 'serverless_matching',
     )
     return jsonify(result['body']), 200
 
@@ -2360,10 +3647,166 @@ def get_case_lawyer_matches(case_id):
     if persisted:
         return jsonify(persisted.get('payload') or {}), 200
 
-    if case_id in lawyer_matches:
-        return jsonify(lawyer_matches[case_id]), 200
-
     return jsonify({'error': 'No lawyer matches found for this case'}), 404
+
+
+@app.route('/api/outreach/directory/targets', methods=['GET'])
+@auth_system._require_auth
+def list_outreach_directory_targets():
+    target_type = request.args.get('target_type') or request.args.get('category')
+    status = request.args.get('status')
+    try:
+        targets = legal_ledger.list_outreach_directory_targets(target_type=target_type, status=status)
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    return jsonify({'targets': targets, 'count': len(targets)}), 200
+
+
+@app.route('/api/outreach/directory/import', methods=['POST'])
+@auth_system._require_auth
+def import_outreach_directory_targets():
+    data = request.get_json(silent=True)
+    records = data if isinstance(data, list) else (data or {}).get('targets') or (data or {}).get('records') or []
+    if not isinstance(records, list) or not records:
+        return jsonify({'error': 'Provide a non-empty targets list'}), 400
+    try:
+        targets = legal_ledger.import_outreach_directory_targets(records, actor=_ledger_actor())
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    return jsonify({
+        'targets': targets,
+        'count': len(targets),
+        'status': 'needs_review',
+        'message': 'Imported targets need review before matching can use them.',
+    }), 201
+
+
+@app.route('/api/outreach/directory/discover', methods=['POST'])
+@auth_system._require_auth
+def discover_outreach_directory_targets():
+    """Search public web results only after an explicit local user action.
+
+    The submitted query is the only value sent to the external search provider;
+    candidate results are immediately placed behind the directory review gate.
+    """
+    data = request.get_json(silent=True) or {}
+    if not data.get('confirm_external_search'):
+        return jsonify({'error': 'Confirm the external query before searching public sources'}), 400
+    try:
+        discovery = OutreachTargetDiscovery().discover(
+            target_type=data.get('target_type') or data.get('category'),
+            query=data.get('query'),
+            limit=data.get('limit') or data.get('max_results') or 10,
+        )
+        targets = legal_ledger.import_outreach_directory_targets(
+            discovery['candidates'],
+            actor=_ledger_actor(),
+            audit_source='web_search',
+            audit_action='discovered_for_review',
+        ) if discovery['candidates'] else []
+    except (OutreachDiscoveryError, ValueError) as exc:
+        return jsonify({'error': str(exc)}), 400
+    return jsonify({
+        **{key: value for key, value in discovery.items() if key != 'candidates'},
+        'targets': targets,
+        'count': len(targets),
+        'status': 'needs_review',
+        'message': 'Public search candidates were added for review. Only approved records can be matched.',
+    }), 201
+
+
+@app.route('/api/outreach/directory/discover-case', methods=['POST'])
+@auth_system._require_auth
+def discover_case_outreach_directory_targets():
+    """Build a sourced review queue from privacy-safe case-area queries."""
+    data = request.get_json(silent=True) or {}
+    if not data.get('confirm_external_search'):
+        return jsonify({'error': 'Confirm the derived external queries before searching public sources'}), 400
+    try:
+        case_id = int(data.get('case_id'))
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Case ID must be a number'}), 400
+    if not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
+
+    ledger_case, legacy_case = _case_for_legacy_endpoint(case_id)
+    if not legacy_case:
+        return jsonify({'error': 'Case not found'}), 404
+    case_data = _case_matching_payload(ledger_case, legacy_case, data)
+    target_type = data.get('target_type') or data.get('category')
+    try:
+        discovery = OutreachTargetDiscovery().discover_for_case(
+            target_type=target_type,
+            legal_fields=case_data.get('legal_fields') or [],
+            limit=data.get('limit') or data.get('max_results') or 40,
+            max_queries=data.get('max_queries') or 6,
+        )
+        targets = legal_ledger.import_outreach_directory_targets(
+            discovery['candidates'],
+            actor=_ledger_actor(),
+            audit_source='case_web_search',
+            audit_action='case_discovered_for_review',
+        ) if discovery['candidates'] else []
+    except (OutreachDiscoveryError, ValueError) as exc:
+        legal_ledger.record_case_activity(
+            case_id,
+            'outreach_directory_case_discovery_failed',
+            actor=_ledger_actor(),
+            source='case_web_search',
+            details={
+                'target_type': str(target_type or '').strip().lower(),
+                'legal_fields': case_data.get('legal_fields') or [],
+                'error': str(exc),
+                'raw_case_text_shared': False,
+            },
+            risk_level='low',
+        )
+        return jsonify({'error': str(exc)}), 400
+
+    coverage = discovery.get('coverage') or {}
+    legal_ledger.record_case_activity(
+        case_id,
+        'outreach_directory_case_discovery',
+        actor=_ledger_actor(),
+        source='case_web_search',
+        details={
+            'target_type': str(target_type or '').strip().lower(),
+            'provider': discovery.get('provider'),
+            'planned_query_count': coverage.get('planned_query_count', 0),
+            'completed_query_count': coverage.get('completed_query_count', 0),
+            'failed_query_count': coverage.get('failed_query_count', 0),
+            'candidate_count': len(targets),
+            'legal_fields': coverage.get('legal_fields') or [],
+            'raw_case_text_shared': False,
+        },
+        risk_level='low',
+    )
+    return jsonify({
+        **{key: value for key, value in discovery.items() if key != 'candidates'},
+        'targets': targets,
+        'count': len(targets),
+        'status': 'needs_review',
+        'case_id': case_id,
+        'case_profile': {
+            'selected_legal_fields': case_data.get('legal_fields') or [],
+            'source_coverage': case_data.get('case_source_coverage') or {},
+            'raw_case_text_shared': False,
+        },
+        'message': 'Case-aware public candidates were added for review. Only approved records can be matched.',
+    }), 201
+
+
+@app.route('/api/outreach/directory/targets/<int:target_id>', methods=['PATCH'])
+@auth_system._require_auth
+def update_outreach_directory_target(target_id):
+    try:
+        target = legal_ledger.update_outreach_directory_target(target_id, request.json or {}, actor=_ledger_actor())
+    except ValueError as exc:
+        return jsonify({'error': str(exc)}), 400
+    if not target:
+        return jsonify({'error': 'Outreach directory target not found'}), 404
+    return jsonify(target), 200
+
 
 @app.route('/api/outreach/targets/match', methods=['POST'])
 @auth_system._require_auth
@@ -2373,7 +3816,12 @@ def match_case_outreach_targets():
     if 'case_id' not in data:
         return jsonify({'error': 'Case ID is required'}), 400
 
-    case_id = int(data['case_id'])
+    try:
+        case_id = int(data['case_id'])
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Case ID must be a number'}), 400
+    if not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
     ledger_case, legacy_case = _case_for_legacy_endpoint(case_id)
     if not legacy_case:
         return jsonify({'error': 'Case not found'}), 404
@@ -2384,17 +3832,37 @@ def match_case_outreach_targets():
         'target_type': target_type,
     }
 
+    candidate_targets = data.get('candidate_targets') or data.get('targets')
+    candidate_source_mode = None
+    candidate_source_details = None
+    if candidate_targets is None:
+        try:
+            approved_targets = legal_ledger.list_outreach_directory_targets(target_type=target_type, status='approved')
+        except ValueError as exc:
+            return jsonify({'error': str(exc)}), 400
+        if approved_targets:
+            candidate_targets = approved_targets
+            candidate_source_mode = 'approved_directory'
+            candidate_source_details = {
+                'source': 'LARO reviewed outreach directory',
+                'approved_target_count': len(approved_targets),
+            }
+
     from serverless_functions import match_outreach_targets
     result = match_outreach_targets({
         'case_id': case_id,
         'case_data': case_data,
         'target_type': target_type,
-        'candidate_targets': data.get('candidate_targets') or data.get('targets'),
+        'candidate_targets': candidate_targets,
+        'candidate_source_mode': candidate_source_mode,
+        'candidate_source_details': candidate_source_details,
         'max_results': data.get('max_results', 30)
     }, {})
 
     if result.get('statusCode') != 200:
         return jsonify(result.get('body', {'error': 'Unable to match outreach targets'})), result.get('statusCode', 500)
+
+    result['body'].setdefault('case_profile', case_data.get('case_profile') or {})
 
     legal_ledger.save_match_result(
         case_id,
@@ -2402,6 +3870,7 @@ def match_case_outreach_targets():
         result['body'],
         criteria=case_data,
         actor=_ledger_actor(),
+        source=result['body'].get('source_mode') or 'serverless_matching',
     )
     return jsonify(result['body']), 200
 
@@ -2413,9 +3882,6 @@ def get_case_outreach_target_matches(case_id, target_type):
     if persisted:
         return jsonify(persisted.get('payload') or {}), 200
 
-    if case_id in outreach_target_matches and normalized_type in outreach_target_matches[case_id]:
-        return jsonify(outreach_target_matches[case_id][normalized_type]), 200
-
     return jsonify({'error': f'No {normalized_type} outreach matches found for this case'}), 404
 
 @app.route('/api/outreach/<int:case_id>/analytics', methods=['GET'])
@@ -2425,7 +3891,7 @@ def get_case_outreach_analytics(case_id):
     if not legacy_case:
         return jsonify({'error': 'Case not found'}), 404
 
-    outreach_snapshot = outreach_campaigns.get(case_id) or _ledger_outreach_snapshot(case_id)
+    outreach_snapshot = _ledger_outreach_snapshot(case_id)
     persisted_matches = {
         item['match_type']: item.get('payload') or {}
         for item in legal_ledger.list_match_results(case_id)
@@ -2435,13 +3901,10 @@ def get_case_outreach_analytics(case_id):
         for key, value in persisted_matches.items()
         if key != 'lawyers'
     }
-    for key, value in outreach_target_matches.get(case_id, {}).items():
-        target_match_results.setdefault(key, value)
-
     analytics = build_outreach_analytics(
         case_id=case_id,
         outreach_campaign=outreach_snapshot,
-        lawyer_match_result=persisted_matches.get('lawyers') or lawyer_matches.get(case_id),
+        lawyer_match_result=persisted_matches.get('lawyers'),
         target_match_results=target_match_results
     )
     return jsonify(analytics), 200
@@ -2455,7 +3918,12 @@ def start_outreach():
     if 'case_id' not in data or 'legal_field' not in data:
         return jsonify({'error': 'Case ID and legal field are required'}), 400
 
-    case_id = int(data['case_id'])
+    try:
+        case_id = int(data['case_id'])
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Case ID must be a number'}), 400
+    if not _ledger_case_access_allowed(case_id):
+        return jsonify({'error': 'Case not found'}), 404
     legal_field = data['legal_field']
     user_id = session.get('user_id', 0)
     ledger_case, legacy_case = _case_for_legacy_endpoint(case_id)
@@ -2512,6 +3980,7 @@ def start_outreach():
                 'max_results': max_lawyers,
             },
             actor=_ledger_actor(),
+            source=lawyer_match_payload.get('source_mode') or 'serverless_matching',
         )
 
     outreach_drafts = []
@@ -2571,67 +4040,38 @@ def start_outreach():
 def get_outreach_status(case_id):
     ledger_outreach = legal_ledger.list_outreach(case_id)
     ledger_responses = legal_ledger.list_lawyer_responses(case_id)
-    if case_id not in outreach_campaigns:
-        if not ledger_outreach:
-            return jsonify({'error': 'No outreach campaign found for this case'}), 404
-        statuses = [item.get('status') for item in ledger_outreach]
-        response_types = [item.get('response_type') for item in ledger_responses]
-        stats = {
-            'total_outreach': len(ledger_outreach),
-            'waiting_approval': sum(1 for status in statuses if status == 'waiting_approval'),
-            'approved_to_send': sum(1 for status in statuses if status == 'approved_to_send'),
-            'approval_rejected': sum(1 for status in statuses if status == 'approval_rejected'),
-            'sent': sum(1 for status in statuses if status == 'sent'),
-            'responses_received': len(ledger_responses),
-            'interested_lawyers_count': sum(1 for response_type in response_types if response_type == 'interested'),
-            'more_info_requests': sum(1 for response_type in response_types if response_type == 'more_info'),
-            'unavailable_responses': sum(1 for response_type in response_types if response_type in {'unavailable', 'rejected'}),
-            'external_messages_sent': 0,
-            'approval_required': True
-        }
-        return jsonify({
-            'case_id': case_id,
-            'statistics': stats,
-            'responses': ledger_responses,
-            'accepted_cases': [],
-            'outreach_records': ledger_outreach,
-            'approval_required': True,
-            'external_messages_sent': 0
-        }), 200
-
-    outreach_system = outreach_campaigns[case_id]
-
-    responses = outreach_system.check_for_responses()
-    stats = outreach_system.get_outreach_statistics()
-    stats['approval_required'] = True
-    accepted = outreach_system.get_accepted_cases()
-
-    user_id = session.get('user_id', 0)
-    timeseries_manager.record_user_activity(
-        user_id=str(user_id),
-        activity_type='check_outreach',
-        resource='outreach',
-        details={
-            'case_id': case_id,
-            'response_count': len(responses),
-            'accepted_count': len(accepted)
-        }
-    )
-
+    if not ledger_outreach:
+        return jsonify({'error': 'No outreach campaign found for this case'}), 404
+    statuses = [item.get('status') for item in ledger_outreach]
+    response_types = [item.get('response_type') for item in ledger_responses]
+    stats = {
+        'total_outreach': len(ledger_outreach),
+        'waiting_approval': sum(1 for status in statuses if status == 'waiting_approval'),
+        'approved_to_send': sum(1 for status in statuses if status == 'approved_to_send'),
+        'approval_rejected': sum(1 for status in statuses if status == 'approval_rejected'),
+        'sent': sum(1 for status in statuses if status == 'sent'),
+        'responses_received': len(ledger_responses),
+        'interested_lawyers_count': sum(1 for response_type in response_types if response_type == 'interested'),
+        'more_info_requests': sum(1 for response_type in response_types if response_type == 'more_info'),
+        'unavailable_responses': sum(1 for response_type in response_types if response_type in {'unavailable', 'rejected'}),
+        'external_messages_sent': 0,
+        'approval_required': True,
+    }
     return jsonify({
         'case_id': case_id,
         'statistics': stats,
-        'responses': [*ledger_responses, *outreach_system.responses],
-        'accepted_cases': accepted,
+        'responses': ledger_responses,
+        'accepted_cases': [],
         'outreach_records': ledger_outreach,
-        'approval_required': True
+        'approval_required': True,
+        'external_messages_sent': 0,
     }), 200
 
 @app.route('/api/outreach/<int:case_id>/follow-up', methods=['POST'])
 @auth_system._require_auth
 def send_follow_ups(case_id):
     ledger_outreach = legal_ledger.list_outreach(case_id)
-    if case_id not in outreach_campaigns and not ledger_outreach:
+    if not ledger_outreach:
         return jsonify({'error': 'No outreach campaign found for this case'}), 404
 
     return jsonify({
@@ -2649,24 +4089,6 @@ def send_follow_ups(case_id):
 def get_user_cases():
     user_id = session.get('user_id', 0)
     ledger_cases = legal_ledger.list_cases(_ledger_actor())
-    if ledger_cases:
-        timeseries_manager.record_user_activity(
-            user_id=str(user_id),
-            activity_type='list',
-            resource='cases'
-        )
-        return jsonify({
-            'user_id': user_id,
-            'cases': ledger_cases
-        }), 200
-    
-    # Use cached query for user cases
-    @db_manager.cached_query(ttl=30)
-    def get_cached_user_cases(user_id):
-        # Filter cases by user ID
-        return [case for case_id, case in cases.items() if case['user_id'] == user_id]
-    
-    # Record user activity in time-series database
     timeseries_manager.record_user_activity(
         user_id=str(user_id),
         activity_type='list',
@@ -2675,7 +4097,7 @@ def get_user_cases():
     
     return jsonify({
         'user_id': user_id,
-        'cases': get_cached_user_cases(user_id)
+        'cases': ledger_cases
     }), 200
 
 @app.route('/api/case/<int:case_id>', methods=['GET'])
@@ -2695,28 +4117,9 @@ def get_case(case_id):
         )
         return jsonify(ledger_case), 200
 
-    ledger_case, legacy_case = _case_for_legacy_endpoint(case_id)
-    if not legacy_case:
+    if not ledger_case:
         return jsonify({'error': 'Case not found'}), 404
-    
-    # Use cached query for case retrieval
-    @db_manager.cached_query(ttl=60)
-    def get_cached_case(case_id):
-        return cases[case_id]
-    
-    # Record case view event in time-series database
-    user_id = session.get('user_id', 0)
-    timeseries_manager.record_user_activity(
-        user_id=str(user_id),
-        activity_type='view',
-        resource='case',
-        details={
-            'case_id': case_id,
-            'category': cases[case_id]['matched_fields'][0] if cases[case_id]['matched_fields'] else 'UNKNOWN'
-        }
-    )
-    
-    return jsonify(get_cached_case(case_id)), 200
+    return jsonify(ledger_case), 200
 
 # API routes for resource usage and billing
 @app.route('/api/billing/<int:case_id>', methods=['GET'])
@@ -2737,26 +4140,11 @@ def get_billing(case_id):
     }
     
     # Add document aggregation resource usage
-    ledger_documents = legal_ledger.list_documents(case_id) if ledger_case else []
-    if ledger_documents:
-        resource_usage['storage_bytes_used'] += sum(
-            len((document.get('extracted_text') or '').encode('utf-8'))
-            for document in ledger_documents
-        )
-    elif case_id in documents:
-        doc_aggregator = DocumentAggregator(case_id=case_id, user_id=0)
-        doc_usage = doc_aggregator.calculate_resource_usage()
-        resource_usage['ai_processing_time_ms'] += doc_usage.get('processing_time_ms', 0)
-        resource_usage['storage_bytes_used'] += doc_usage.get('total_size_bytes', 0)
-        resource_usage['total_resource_cost'] += doc_usage.get('estimated_cost', 0)
-    
-    # Add outreach resource usage
-    if case_id in outreach_campaigns:
-        outreach_system = outreach_campaigns[case_id]
-        outreach_usage = outreach_system.calculate_resource_usage()
-        resource_usage['email_count'] += outreach_usage.get('email_count', 0)
-        resource_usage['follow_up_count'] += outreach_usage.get('follow_up_count', 0)
-        resource_usage['total_resource_cost'] += outreach_usage.get('estimated_cost', 0)
+    ledger_documents = legal_ledger.list_documents(case_id)
+    resource_usage['storage_bytes_used'] += sum(
+        len((document.get('extracted_text') or '').encode('utf-8'))
+        for document in ledger_documents
+    )
     
     # Calculate user charge (resource cost x 2)
     resource_usage['user_charge'] = resource_usage['total_resource_cost'] * 2
@@ -2873,19 +4261,20 @@ def get_event_history():
         'events': events
     }), 200
 
-# Lightweight session helper for local demos. The real password login remains
-# registered by authentication.py at /api/auth/login.
+# Local-first bootstrap for the configured machine owner. The regular password
+# login remains registered by authentication.py at /api/auth/login.
 @app.route('/api/auth/session-login', methods=['POST'])
 def session_login():
-    data = request.json
-    
-    if 'email' not in data:
-        return jsonify({'error': 'Email is required'}), 400
-    
-    email = data['email']
-    
-    # Authenticate user (simplified for demo)
-    user_id = hash(email) % 1000  # Generate a deterministic user ID
+    if not _is_loopback_request():
+        return jsonify({'error': 'Local session bootstrap is available only from this machine'}), 403
+
+    data = request.get_json(silent=True) or {}
+    owner_email = _local_session_owner_email()
+    email = str(data.get('email') or owner_email).strip().lower()
+    if email != owner_email:
+        return jsonify({'error': 'Local session bootstrap is restricted to the configured local account'}), 403
+
+    user_id = int(hashlib.sha256(email.encode('utf-8')).hexdigest()[:8], 16)
     
     # Set user ID in session
     session['user_id'] = user_id
@@ -2976,5 +4365,9 @@ if __name__ == '__main__':
         }
     )
     
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    host = os.environ.get('LARO_HOST', '127.0.0.1').strip()
+    if not _is_loopback_host(host):
+        raise RuntimeError('LARO only binds to localhost. Use a local reverse proxy only after adding explicit access controls.')
+    port = int(os.environ.get('LARO_FLASK_PORT', os.environ.get('PORT', 8768)))
+    debug = os.environ.get('LARO_DEBUG', '').strip().lower() in {'1', 'true', 'yes'}
+    app.run(host=host, port=port, debug=debug, use_reloader=debug)

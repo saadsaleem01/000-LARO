@@ -1,0 +1,22 @@
+# Phase 032 — run the LARO API server with a persistent data volume.
+# Usage: docker compose up --build
+# (Runs the server backend only, not the Electron desktop app.)
+services:
+  laro-server:
+    build: .
+    image: laro-server
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      PORT: "3000"
+      DATABASE_URL: /data/laro-server.sqlite
+      LOCAL_STORAGE_DIR: /data/uploads
+    volumes:
+      - laro-data:/data
+    restart: unless-stopped
+
+volumes:
+  laro-data:

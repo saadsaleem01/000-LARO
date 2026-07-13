@@ -40,9 +40,8 @@ def process_new_case(payload, context):
     initial processing such as categorization, complexity analysis,
     and lawyer matching.
     """
-    logger.info(f"Processing new case: {payload}")
-    
     case_id = payload.get('case_id')
+    logger.info("Processing new case %s", case_id)
     if not case_id:
         return {
             'statusCode': 400,
@@ -178,9 +177,14 @@ def process_document(payload, context):
     This function processes a document, extracting text, analyzing content,
     and generating metadata.
     """
-    logger.info(f"Processing document: {payload}")
-    
     document_id = payload.get('document_id')
+    document_data = payload.get('document_data', {})
+    logger.info(
+        "Processing document %s for case %s (%s)",
+        document_id,
+        document_data.get('case_id'),
+        document_data.get('document_name') or document_data.get('file_name') or 'unnamed',
+    )
     if not document_id:
         return {
             'statusCode': 400,
@@ -189,7 +193,6 @@ def process_document(payload, context):
     
     try:
         # Get document data
-        document_data = payload.get('document_data', {})
         case_id = document_data.get('case_id')
         
         # Perform document processing
@@ -403,9 +406,12 @@ def match_lawyers(payload, context):
     This function matches lawyers to a case based on case details
     and lawyer specializations.
     """
-    logger.info(f"Matching lawyers: {payload}")
-    
     case_id = payload.get('case_id')
+    logger.info(
+        "Matching lawyers for case %s with %s provided candidates",
+        case_id,
+        len(payload.get('candidate_lawyers') or []),
+    )
     if not case_id:
         return {
             'statusCode': 400,
@@ -443,6 +449,7 @@ def match_lawyers(payload, context):
                 'processing_time': processing_time,
                 'source_mode': match_result.get('source_mode'),
                 'nova_search_url': match_result.get('nova_search_url'),
+                'source_details': match_result.get('source_details'),
                 'search_criteria': match_result.get('search_criteria')
             }
         )
@@ -454,8 +461,10 @@ def match_lawyers(payload, context):
                 'case_id': case_id,
                 'matched_lawyers': ranked_lawyers,
                 'search_criteria': match_result.get('search_criteria'),
+                'case_profile': match_result.get('case_profile'),
                 'source_mode': match_result.get('source_mode'),
                 'nova_search_url': match_result.get('nova_search_url'),
+                'source_details': match_result.get('source_details'),
                 'available_count': match_result.get('available_count'),
                 'processing_time': processing_time
             }
@@ -496,9 +505,13 @@ def rank_lawyers_by_relevance(lawyers, case_data):
 })
 def match_outreach_targets(payload, context):
     """Match media or organization outreach targets to a case."""
-    logger.info(f"Matching outreach targets: {payload}")
-
     case_id = payload.get('case_id')
+    logger.info(
+        "Matching %s outreach targets for case %s with %s provided candidates",
+        payload.get('target_type') or 'media',
+        case_id,
+        len(payload.get('candidate_targets') or []),
+    )
     if not case_id:
         return {
             'statusCode': 400,
@@ -520,7 +533,9 @@ def match_outreach_targets(payload, context):
         match_result = outreach_target_engine.match(
             match_input,
             records=payload.get('candidate_targets'),
-            max_results=payload.get('max_results')
+            max_results=payload.get('max_results'),
+            source_mode_override=payload.get('candidate_source_mode'),
+            source_details_override=payload.get('candidate_source_details'),
         )
         processing_time = time.time() - start_time
 

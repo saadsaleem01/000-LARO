@@ -1,0 +1,240 @@
+import { google } from 'googleapis';
+import { getDb } from './db';
+import { emailAccounts, googleDriveFiles } from './schema';
+import { eq, and } from 'drizzle-orm';
+import { storagePut } from './storage';
+import { v4 as uuidv4 } from 'uuid';
+import { decryptToken, encryptToken, refreshGmailToken } from './emailOAuth';
+
+/**
+ * Google Drive Service
+ * Handles file metadata retrieval and downloads from Google Drive
+ */
+
+/**
+ * Get an authenticated Drive client for a user
+ */
+async function getDriveClient(userId: string) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+
+  // Find a Google account for this user
+  const account = await db
+    .select()
+    .from(emailAccounts)
+    .where(and(eq(emailAccounts.userId, userId), eq(emailAccounts.provider, 'gmail')))
+    .limit(1);
+
+  if (!account[0]) {
+    throw new Error(`No Google account connected for user ${userId}`);
+  }
+
+  const emailAccount = account[0];
+  let accessToken = decryptToken(emailAccount.accessToken!);
+
+  // Refresh token if expired
+  const now = new Date();
+  if (emailAccount.tokenExpiry && new Date(emailAccount.tokenExpiry) <= now) {
+    const refreshToken = decryptToken(emailAccount.refreshToken!);
+    const newTokens = await refreshGmailToken(refreshToken);
+    
+    accessToken = newTokens.accessToken;
+    
+    await db.update(emailAccounts)
+      .set({
+        accessToken: encryptToken(accessToken),
+        tokenExpiry: new Date(newTokens.expiryDate),
+      })
+      .where(eq(emailAccounts.id, emailAccount.id));
+  }
+
+  const auth = new google.auth.OAuth2();
+  auth.setCredentials({ access_token: accessToken });
+  
+  return google.drive({ version: 'v3', auth });
+}
+
+/**
+ * Get file metadata from a Google Drive folder
+ * Note: This implementation assumes it can find the userId from the context
+ * mapping if not provided, but for background jobs, we might need to adjust.
+ * For now, we'll try to find the user associated with the folder if possible,
+ * or use a fallback mechanism.
+ */
+export async function getGoogleDriveFileMetadata(folderId: string, userId?: string) {
+  // If userId is missing, we try to find it from the autoCollectionSettings
+  // This is a safety measure because autoCollectionService.ts doesn't pass it yet.
+  let targetUserId = userId;
+  
+  if (!targetUserId) {
+    const db = await getDb();
+    if (db) {
+      const { autoCollectionSettings } = await import('./schema');
+      const settings = await db
+        .select()
+        .from(autoCollectionSettings)
+        .where(eq(autoCollectionSettings.googleDriveFolderIds, JSON.stringify([folderId])))
+        .limit(1);
+      
+      if (settings[0]) {
+          targetUserId = settings[0].userId || undefined;
+      }
+    }
+  }
+
+  if (!targetUserId) {
+    // Fallback: Get the first user with a Google account (simplified for now)
+    const db = await getDb();
+    const account = await db?.select().from(emailAccounts).where(eq(emailAccounts.provider, 'gmail')).limit(1);
+    targetUserId = account?.[0]?.userId;
+  }
+
+  if (!targetUserId) throw new Error('Could not determine userId for Google Drive request');
+
+  const drive = await getDriveClient(targetUserId);
+  
+  const response = await drive.files.list({
+    q: `'${folderId}' in parents and trashed = false`,
+    fields: 'files(id, name, mimeType, size, webViewLink, modifiedTime)',
+  });
+
+  return response.data.files || [];
+}
+
+/**
+ * Download a file from Google Drive and upload it to local/S3 storage
+ */
+export async function downloadAndUploadGoogleDriveFile(fileId: string, caseId: string, userId?: string) {
+  const db = await getDb();
+  if (!db) throw new Error('Database not available');
+
+  // If userId not provided, look up the case to find the owner
+  let targetUserId = userId;
+  if (!targetUserId) {
+    const { cases } = await import('./schema');
+    const caseData = await db.select().from(cases).where(eq(cases.id, caseId)).limit(1);
+    if (!caseData[0]) throw new Error(`Case ${caseId} not found`);
+    targetUserId = caseData[0].userId;
+  }
+
+  const drive = await getDriveClient(targetUserId);
+
+  // 1. Get metadata to know the filename
+  const fileMetadata = await drive.files.get({
+    fileId,
+    fields: 'name, mimeType, size, modifiedTime',
+  });
+
+  const fileName = fileMetadata.data.name || 'document';
+  const mimeType = fileMetadata.data.mimeType || 'application/octet-stream';
+  const fileSize = fileMetadata.data.size;
+  const modifiedTime = fileMetadata.data.modifiedTime;
+
+  // 2. Download the file content
+  const response = await drive.files.get(
+    { fileId, alt: 'media' },
+    { responseType: 'arraybuffer' }
+  );
+
+  const buffer = Buffer.from(response.data as ArrayBuffer);
+
+  // 3. Upload to our storage
+  const storagePath = `evidence/${caseId}/gdrive/${uuidv4()}-${fileName}`;
+  const { key, url } = await storagePut(storagePath, buffer, mimeType);
+
+  return { 
+    key, 
+    url, 
+    fileName, 
+    mimeType, 
+    size: fileSize || buffer.length.toString(),
+    modifiedTime: modifiedTime ? new Date(modifiedTime) : new Date(),
+  };
+}
+
+/**
+ * List folders in Google Drive (root or specific parent)
+ * Used for folder browsing UI
+ */
+export async function listGoogleDriveFolders(userId: string, parentId?: string) {
+  const drive = await getDriveClient(userId);
+  
+  let query = "mimeType='application/vnd.google-apps.folder' and trashed=false";
+  
+  if (parentId) {
+    query += ` and '${parentId}' in parents`;
+  } else {
+    query += " and 'root' in parents";
+  }
+
+  const response = await drive.files.list({
+    q: query,
+    fields: 'files(id, name, modifiedTime, parents)',
+    orderBy: 'name',
+  });
+
+  return response.data.files || [];
+}
+
+/**
+ * Get all files in a folder (with optional recursive scanning)
+ */
+export async function getAllFilesInFolder(
+  userId: string, 
+  folderId: string, 
+  recursive: boolean = false
+): Promise<Array<{ id: string; name: string; mimeType?: string | null; size?: string | null; webViewLink?: string | null }>> {
+  const drive = await getDriveClient(userId);
+  
+  const allFiles: Array<{ id: string; name: string; mimeType?: string | null; size?: string | null; webViewLink?: string | null; modifiedTime?: string | null }> = [];
+
+  async function scanFolder(currentFolderId: string) {
+    // Get all items in this folder
+    const response = await drive.files.list({
+      q: `'${currentFolderId}' in parents and trashed = false`,
+      fields: 'files(id, name, mimeType, size, webViewLink, modifiedTime)',
+    });
+
+    const items = response.data.files || [];
+    
+    for (const item of items) {
+      if (item.mimeType === 'application/vnd.google-apps.folder') {
+        // It's a folder
+        if (recursive) {
+          await scanFolder(item.id!);
+        }
+      } else {
+        // It's a file
+        allFiles.push(item as any);
+      }
+    }
+  }
+  
+  await scanFolder(folderId);
+  return allFiles;
+}
+
+/**
+ * Search files in Google Drive by query
+ */
+export async function searchGoogleDriveFiles(
+  userId: string, 
+  query: string,
+  inFolder?: string
+) {
+  const drive = await getDriveClient(userId);
+  
+  let searchQuery = `name contains '${query}' and trashed = false and mimeType != 'application/vnd.google-apps.folder'`;
+  
+  if (inFolder) {
+    searchQuery += ` and '${inFolder}' in parents`;
+  }
+
+  const response = await drive.files.list({
+    q: searchQuery,
+    fields: 'files(id, name, mimeType, size, webViewLink, modifiedTime)',
+    orderBy: 'modifiedTime desc',
+  });
+
+  return response.data.files || [];
+}

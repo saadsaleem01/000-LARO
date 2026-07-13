@@ -144,6 +144,7 @@
             if (button.disabled || type === "submit" || type === "reset" || isBootstrapManaged(button)) return;
             if (
                 button.id ||
+                button.dataset.depth ||
                 button.dataset.depthMode ||
                 button.dataset.tab ||
                 button.dataset.view ||

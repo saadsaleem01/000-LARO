@@ -1,0 +1,114 @@
+{
+  "courtCategoryToSpecializations": {
+    "Civiel procesrecht": [
+      "Aansprakelijkheidsrecht",
+      "Arbeidsrecht",
+      "Bouwrecht",
+      "Contractenrecht",
+      "Familierecht",
+      "Gezondheidsrecht",
+      "Huurrecht",
+      "Incassorecht",
+      "Insolventierecht",
+      "Intellectueel eigendomsrecht",
+      "Letselschade",
+      "Medisch aansprakelijkheidsrecht",
+      "Ondernemingsrecht",
+      "Personen- en familierecht",
+      "Verbintenissenrecht",
+      "Verzekeringsrecht",
+      "Agrarisch recht",
+      "Goederenrecht",
+      "Informatierecht",
+      "IT recht",
+      "Mediarecht",
+      "Merkenrecht",
+      "Octrooirecht",
+      "Sportrecht"
+    ],
+    "Bestuursrecht": [
+      "Ambtenarenrecht",
+      "Asiel- en migratierecht",
+      "Milieurecht",
+      "Omgevingsrecht",
+      "Socialezekerheidsrecht",
+      "Vreemdelingenrecht",
+      "Pensioenrecht",
+      "Tuchtrecht"
+    ],
+    "Strafrecht": [
+      "Jeugdstrafrecht",
+      "Strafrecht"
+    ],
+    "Arbeidsrecht": [
+      "Arbeidsrecht",
+      "Ambtenarenrecht"
+    ],
+    "Belastingrecht": [
+      "Belastingrecht"
+    ],
+    "Huurrecht": [
+      "Huurrecht"
+    ],
+    "Insolventierecht": [
+      "Insolventierecht",
+      "Ondernemingsrecht"
+    ]
+  },
+  "specializationToCourtCategories": {
+    "Aansprakelijkheidsrecht": ["Civiel procesrecht"],
+    "Agrarisch recht": ["Civiel procesrecht"],
+    "Algemene praktijk": ["Civiel procesrecht", "Bestuursrecht", "Strafrecht", "Arbeidsrecht"],
+    "Ambtenarenrecht": ["Bestuursrecht", "Arbeidsrecht"],
+    "Arbeidsrecht": ["Civiel procesrecht", "Arbeidsrecht"],
+    "Asiel- en migratierecht": ["Bestuursrecht"],
+    "Belastingrecht": ["Belastingrecht"],
+    "Bouwrecht": ["Civiel procesrecht"],
+    "Contractenrecht": ["Civiel procesrecht"],
+    "Europees en internationaal recht": ["Civiel procesrecht", "Bestuursrecht"],
+    "Familierecht": ["Civiel procesrecht"],
+    "Gezondheidsrecht": ["Civiel procesrecht", "Bestuursrecht"],
+    "Goederenrecht": ["Civiel procesrecht"],
+    "Huurrecht": ["Civiel procesrecht", "Huurrecht"],
+    "Incassorecht": ["Civiel procesrecht"],
+    "Informatierecht": ["Civiel procesrecht"],
+    "Insolventierecht": ["Civiel procesrecht", "Insolventierecht"],
+    "Intellectueel eigendomsrecht": ["Civiel procesrecht"],
+    "IT recht": ["Civiel procesrecht"],
+    "Jeugdstrafrecht": ["Strafrecht"],
+    "Letselschade": ["Civiel procesrecht"],
+    "Mediarecht": ["Civiel procesrecht"],
+    "Medisch aansprakelijkheidsrecht": ["Civiel procesrecht"],
+    "Merkenrecht": ["Civiel procesrecht"],
+    "Milieurecht": ["Bestuursrecht"],
+    "Octrooirecht": ["Civiel procesrecht"],
+    "Omgevingsrecht": ["Bestuursrecht"],
+    "Ondernemingsrecht": ["Civiel procesrecht", "Insolventierecht"],
+    "Pensioenrecht": ["Bestuursrecht", "Civiel procesrecht"],
+    "Personen- en familierecht": ["Civiel procesrecht"],
+    "Socialezekerheidsrecht": ["Bestuursrecht"],
+    "Sportrecht": ["Civiel procesrecht"],
+    "Strafrecht": ["Strafrecht"],
+    "Tuchtrecht": ["Bestuursrecht"],
+    "Verbintenissenrecht": ["Civiel procesrecht"],
+    "Verzekeringsrecht": ["Civiel procesrecht"],
+    "Vreemdelingenrecht": ["Bestuursrecht"]
+  },
+  "confidenceScores": {
+    "directMatch": 1.0,
+    "strongMatch": 0.8,
+    "moderateMatch": 0.5,
+    "weakMatch": 0.3
+  },
+  "metadata": {
+    "version": "1.0",
+    "lastUpdated": "2025-10-27",
+    "description": "Mapping between 7 rechtspraak.nl court categories and 36 Dutch Bar Association lawyer specializations",
+    "courtCaseData": {
+      "totalCases": 877000,
+      "source": "rechtspraak.nl",
+      "collectionDate": "2025-10-27"
+    }
+  }
+}
+

@@ -518,6 +518,7 @@
 
             <section class="results-header">
                 <h3 id="resultCount">Matched Lawyers (0)</h3>
+                <span class="muted" id="resultSource">no live data</span>
                 <a class="source-link" id="novaSearchLink" href="https://zoekeenadvocaat.advocatenorde.nl/zoeken" target="_blank" rel="noopener">Open NOvA search</a>
             </section>
 
@@ -540,6 +541,7 @@
 
         let currentMatches = EMPTY_MATCHES;
         let currentSearchUrl = "https://zoekeenadvocaat.advocatenorde.nl/zoeken";
+        let currentSourceDetails = {};
 
         function initials(name) {
             return String(name || "").split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
@@ -558,9 +560,15 @@
             const emptyState = document.getElementById("emptyState");
             const count = document.getElementById("resultCount");
             const novaLink = document.getElementById("novaSearchLink");
+            const source = document.getElementById("resultSource");
+            const emptyMessage = emptyState.querySelector("div");
             list.innerHTML = "";
             count.textContent = `Matched Lawyers (${currentMatches.length})`;
             novaLink.href = currentSearchUrl;
+            source.textContent = currentSourceDetails.source || "no live data";
+            emptyMessage.innerHTML = currentSourceDetails.reason
+                ? `<strong>No live results available.</strong><br>${currentSourceDetails.reason}`
+                : `<strong>No matching lawyers found.</strong><br>Open the official search to refine location or filters.`;
             emptyState.classList.toggle("is-visible", currentMatches.length === 0);
 
             currentMatches.forEach((lawyer) => {
@@ -622,6 +630,7 @@
             if (!caseId) {
                 currentSearchUrl = buildNovaUrl(payload);
                 currentMatches = EMPTY_MATCHES;
+                currentSourceDetails = {};
                 renderMatches();
                 showToast("Load a case to run lawyer matching");
                 return;
@@ -639,11 +648,13 @@
                 const body = await response.json();
                 currentMatches = body.matched_lawyers || [];
                 currentSearchUrl = body.nova_search_url || buildNovaUrl(payload);
+                currentSourceDetails = body.source_details || {};
                 renderMatches();
-                showToast("Matches refreshed");
+                showToast(currentMatches.length ? "NOvA matches updated" : "No NOvA matches for these filters");
             } catch (error) {
                 currentSearchUrl = buildNovaUrl(payload);
                 currentMatches = EMPTY_MATCHES;
+                currentSourceDetails = { reason: "The live NOvA directory could not be reached. No fallback data is shown." };
                 renderMatches();
                 showToast("No live lawyer matches available");
             }

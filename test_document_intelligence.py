@@ -4,6 +4,7 @@ import unittest
 
 from document_aggregation import DocumentAggregator
 from document_intelligence import DocumentIntelligenceEngine
+from serverless_functions import logger as serverless_logger
 from serverless_functions import process_document
 
 
@@ -28,6 +29,21 @@ class TestDocumentIntelligenceEngine(unittest.TestCase):
         self.assertTrue(analysis["facts"]["monetary_amounts"])
         self.assertTrue(analysis["facts"]["obligations"])
         self.assertTrue(analysis["risks"])
+
+    def test_analysis_keeps_material_source_passages_and_date_locators(self):
+        analysis = self.engine.analyze_text(self.text, document_name="notice.txt")
+
+        findings = analysis["findings"]
+        first_date = analysis["facts"]["dates"][0]
+        first_event = analysis["evidence"]["chronology_events"][0]
+
+        self.assertTrue(findings["source_passages"])
+        self.assertIn("obligation", findings["category_counts"])
+        self.assertFalse(findings["complete_statement_inventory"])
+        self.assertEqual(analysis["processing"]["analysis_method"], "rule_based_source_passage_v1")
+        self.assertIn("source_locator", first_date)
+        self.assertTrue(first_date["source_locator"]["passage_id"])
+        self.assertEqual(first_event["source_locator"], first_date["source_locator"])
 
     def test_extract_text_from_file_reads_real_upload(self):
         with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False, encoding="utf-8") as handle:
@@ -64,6 +80,25 @@ class TestDocumentIntelligenceEngine(unittest.TestCase):
         self.assertIn("action", timeline[0])
         self.assertIn("event_label", timeline[0])
         self.assertIn("evidence_quote", timeline[0])
+
+    def test_timeline_event_fields_capture_who_did_what_from_source_metadata(self):
+        analysis = self.engine.analyze_text(
+            "On 2026-07-10, CAK stated Robert must provide the bank statement by 2026-08-14.",
+            document_name="CAK request.txt",
+            metadata={"sender": "CAK", "recipient": "Robert"},
+        )
+
+        events = analysis["evidence"]["chronology_events"]
+        self.assertTrue(events)
+        self.assertEqual(events[0]["actor"], "CAK")
+        self.assertEqual(events[0]["action"], "stated")
+        self.assertEqual(events[0]["affected_party"], "Robert")
+        self.assertEqual(events[0]["event_kind"], "communication")
+
+        inferred = self.engine.timeline_event_fields(
+            "On 2026-07-10, CAK stated Robert must provide the bank statement by 2026-08-14."
+        )
+        self.assertEqual(inferred["actor"], "CAK")
 
 
 class TestDocumentAggregationIntelligence(unittest.TestCase):
@@ -105,6 +140,25 @@ class TestServerlessDocumentProcessing(unittest.TestCase):
         self.assertIn("legal_analysis", body["analysis"])
         self.assertTrue(body["analysis"]["legal_analysis"]["facts"]["dates"])
         self.assertGreater(body["metadata"]["relevance_score"], 0)
+
+    def test_process_document_does_not_log_legal_text(self):
+        legal_text = "Confidential client statement that must not enter application logs."
+
+        with self.assertLogs(serverless_logger, level="INFO") as captured:
+            result = process_document(
+                {
+                    "document_id": "doc-private",
+                    "document_data": {
+                        "case_id": 11,
+                        "document_name": "client-statement.txt",
+                        "content": legal_text,
+                    },
+                },
+                {},
+            )
+
+        self.assertEqual(result["statusCode"], 200)
+        self.assertNotIn(legal_text, "\n".join(captured.output))
 
 
 if __name__ == "__main__":

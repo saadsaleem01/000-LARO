@@ -1,9 +1,11 @@
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
 from urllib.parse import parse_qs, urlparse
 
 from google_oauth import GOOGLE_SCOPES, build_google_oauth_url, google_oauth_config
+from google_token_store import LocalEncryptedTokenStore
 
 
 class GoogleOAuthTests(unittest.TestCase):
@@ -38,7 +40,13 @@ class GoogleOAuthRouteTests(unittest.TestCase):
         import app as app_module
         self.app_module = app_module
         self.client = app_module.app.test_client()
-        app_module.google_connections.clear()
+        self.vault_directory = tempfile.TemporaryDirectory()
+        self.previous_token_store = app_module.google_token_store
+        app_module.google_token_store = LocalEncryptedTokenStore(self.vault_directory.name)
+
+    def tearDown(self):
+        self.app_module.google_token_store = self.previous_token_store
+        self.vault_directory.cleanup()
 
     def test_popup_callback_returns_closeable_result_page_and_updates_status(self):
         with self.client.session_transaction() as sess:
@@ -59,8 +67,8 @@ class GoogleOAuthRouteTests(unittest.TestCase):
         status = self.client.get("/api/google/oauth/status").get_json()
         self.assertTrue(status["connected"])
         self.assertEqual(status["status_source"], "legal_ledger")
+        self.assertTrue(status["credential_vault"]["available"])
 
-        self.app_module.google_connections.clear()
         restarted_status = self.client.get("/api/google/oauth/status").get_json()
         self.assertTrue(restarted_status["connected"])
         self.assertEqual(restarted_status["status_source"], "legal_ledger")

@@ -2996,8 +2996,8 @@
                                 <input class="control-input" id="expertCaseId" inputmode="numeric" placeholder="1">
                             </label>
                             <label class="control-field">
-                                <span>Drive folder</span>
-                                <input class="control-input" id="expertDriveFolder" placeholder="Optional folder path">
+                                <span>Drive search</span>
+                                <input class="control-input" id="expertDriveFolder" placeholder="Uses the active case title when empty">
                             </label>
                             <label class="control-field">
                                 <span>Gmail query</span>
@@ -3010,7 +3010,7 @@
                         <div class="expert-control-grid">
                             <label class="control-field">
                                 <span>Max items per source</span>
-                                <input class="control-input" id="expertMaxItems" inputmode="numeric" min="10" max="300" type="number" value="80" />
+                                <input class="control-input" id="expertMaxItems" inputmode="numeric" min="1" max="100" type="number" value="80" />
                             </label>
                             <label class="control-field">
                                 <span>Date window (days)</span>
@@ -3227,9 +3227,10 @@
         const TIMELINE_VIEW_KEY = "laroEvidenceTimelineView";
         const GOOGLE_STATUS_URL = "/api/google/oauth/status";
         const GOOGLE_AUTHORIZE_URL = "/api/google/oauth/start";
-        const DOCUMENT_AGGREGATE_URL = "/api/documents/aggregate";
         const COMMAND_CENTER_URL = "/api/dashboard/command-center";
+        const GOOGLE_PULL_JOBS_URL = (caseId) => `/api/cases/${encodeURIComponent(caseId)}/documents/pull-google/jobs`;
         let pullTimer = null;
+        let activeGooglePullJobs = [];
         let googleConnected = false;
         let googleOAuthPopup = null;
         let googleOAuthPollTimer = null;
@@ -3325,6 +3326,7 @@
                     if (Number.isFinite(value) && value > 0) {
                         const expertCase = document.getElementById("expertCaseId");
                         if (expertCase) expertCase.value = String(value);
+                        resumeGoogleEvidencePull(value);
                     }
                     showDashboardToast("Case context updated.");
                 });
@@ -4163,21 +4165,21 @@
         }
 
         function normalizeDocument(doc, index) {
-            const source = doc.source || "google_drive";
+            const source = doc.source || doc.source_type || "google_drive";
             const id = String(doc.document_id || doc.id || `api-doc-${index}`);
             return {
                 id,
-                name: doc.document_name || doc.name || `Evidence document ${index + 1}`,
+                name: doc.title || doc.document_name || doc.original_filename || doc.name || `Evidence document ${index + 1}`,
                 source,
                 type: doc.document_type || doc.type || "document",
-                url: doc.source_url || doc.url || `#document-${id}`,
-                content: doc.content || doc.summary || doc.description || "",
-                summary: doc.summary || doc.legal_summary || doc.content || ""
+                url: doc.source_uri || doc.source_url || doc.url || `#document-${id}`,
+                content: doc.extracted_text || doc.ocr_text || doc.content || doc.summary || doc.description || "",
+                summary: doc.summary || doc.legal_summary || doc.extracted_text || doc.content || ""
             };
         }
 
         function normalizeTimelineEvent(event, index) {
-            const sourceDocumentId = String(event.source_document_id || event.document_id || event.id || `api-doc-${index}`);
+            const sourceDocumentId = String(event.source_document_id || event.created_from_document_id || event.document_id || event.id || `api-doc-${index}`);
             return {
                 timeline_id: event.timeline_id || `api-event-${index}`,
                 date: event.date || event.event_date || event.created_at || new Date().toISOString().slice(0, 10),
@@ -4195,131 +4197,199 @@
             };
         }
 
-        async function aggregateSource(source) {
-            const body = {
-                case_id: currentCaseId(),
-                source
-            };
-            if (source === "gmail") body.query = expertControlValue("expertGmailQuery") || "legal OR CAK OR bezwaar OR factuur";
-            if (source === "gdrive") body.folder_path = expertControlValue("expertDriveFolder");
-            body.max_items = expertControlNumberValue("expertMaxItems", 80);
-            body.sort_order = expertControlValue("expertSourceOrder") || "newest";
-            const daysBack = expertControlNumberValue("expertDaysBack");
-            if (daysBack !== null) {
-                body.days_back = daysBack;
+        function googleQueryForSource(source) {
+            const fieldId = source === "gmail" ? "expertGmailQuery" : "expertDriveFolder";
+            const query = expertControlValue(fieldId);
+            if (query) return query;
+            if (source === "gdrive") {
+                const caseId = String(currentCaseId());
+                const activeCase = (currentCommandCenterData?.cases || []).find((item) => String(item.case_id || item.id) === caseId);
+                const title = String(activeCase?.title || "").trim();
+                if (title) return title;
             }
-
-            const response = await fetch(DOCUMENT_AGGREGATE_URL, {
-                method: "POST",
-                credentials: "same-origin",
-                headers: {
-                    "Content-Type": "application/json",
-                    ...authHeaders()
-                },
-                body: JSON.stringify(body)
-            });
-
-            if (!response.ok) {
-                const message = await response.text();
-                throw new Error(`Aggregation failed for ${source}: ${response.status} ${message}`);
-            }
-            return response.json();
+            throw new Error(source === "gmail"
+                ? "Enter a Gmail search before pulling evidence."
+                : "Enter a Google Drive search, or select a named active case.");
         }
 
-        async function collectEvidenceFromBackend() {
-            const sources = selectedEvidenceSources();
-            if (!sources.length) throw new Error("Select at least one evidence source before pulling.");
-            const results = await Promise.all(sources.map(aggregateSource));
-            const documents = [];
-            const timeline = [];
-            results.forEach((result) => {
-                (result.evidence_trail || result.documents || []).forEach((doc) => documents.push(normalizeDocument(doc, documents.length)));
-                (result.evidence_timeline || result.timeline || []).forEach((event) => timeline.push(normalizeTimelineEvent(event, timeline.length)));
-            });
+        function pullJobMessage(jobs) {
+            const active = jobs.filter((job) => ["queued", "running"].includes(job.status));
+            const totalItems = jobs.reduce((sum, job) => sum + Number(job.total_items || 0), 0);
+            const completedItems = jobs.reduce((sum, job) => sum + Number(job.completed_items || 0), 0);
+            const totalWords = jobs.reduce((sum, job) => sum + Number(job.total_words || 0), 0);
+            const processedWords = jobs.reduce((sum, job) => sum + Number(job.processed_words || 0), 0);
+            const percent = totalWords > 0
+                ? Math.round((processedWords / totalWords) * 100)
+                : Math.round(jobs.reduce((sum, job) => sum + Number(job.progress_percent || 0), 0) / Math.max(jobs.length, 1));
+            const remaining = active
+                .map((job) => job.estimated_remaining_seconds)
+                .filter((value) => Number.isFinite(Number(value)))
+                .reduce((sum, value) => sum + Number(value), 0);
+            const itemText = totalItems ? `${completedItems}/${totalItems} source item${totalItems === 1 ? "" : "s"}` : "checking selected sources";
+            const wordText = totalWords ? `${processedWords.toLocaleString()}/${totalWords.toLocaleString()} extracted words` : "waiting for received text";
+            const etaText = active.length && remaining ? `about ${remaining}s left` : active.length ? "estimating remaining time" : "complete";
+            return { active, totalItems, completedItems, totalWords, processedWords, percent: Math.max(0, Math.min(100, percent)), itemText, wordText, etaText };
+        }
 
+        function renderGooglePullProgress(jobs) {
+            activeGooglePullJobs = Array.isArray(jobs) ? jobs : [];
+            const summary = pullJobMessage(activeGooglePullJobs);
+            const progressBar = document.getElementById("pullProgressBar");
+            progressBar.style.width = `${summary.percent}%`;
+            progressBar.setAttribute("aria-valuenow", String(summary.percent));
+            const current = summary.active.find((job) => job.current_item) || summary.active[0] || activeGooglePullJobs[0];
+            document.getElementById("pullProgressText").textContent = current
+                ? `${current.stage || "Reading evidence"} - ${summary.itemText} - ${summary.wordText} - ${summary.etaText}${current.current_item ? ` - ${current.current_item}` : ""}`
+                : "Waiting to start.";
+            document.getElementById("syncStatus").textContent = summary.active.length
+                ? `Reading ${selectedSourceLabel()} evidence from the local import job.`
+                : activeGooglePullJobs.some((job) => job.status === "failed")
+                    ? "Evidence intake needs attention. Review the import message below."
+                    : "Evidence, document list, and timeline are up to date.";
+            document.getElementById("pullEvidence").disabled = !googleConnected || Boolean(summary.active.length);
+            updateQuickActions();
+        }
+
+        function stopGooglePullPolling() {
+            if (pullTimer) {
+                window.clearInterval(pullTimer);
+                pullTimer = null;
+            }
+        }
+
+        async function loadPersistedEvidence(caseId) {
+            const [documentsResponse, timelineResponse] = await Promise.all([
+                fetch(`/api/cases/${encodeURIComponent(caseId)}/documents`, { credentials: "same-origin", headers: authHeaders() }),
+                fetch(`/api/cases/${encodeURIComponent(caseId)}/timeline`, { credentials: "same-origin", headers: authHeaders() })
+            ]);
+            if (!documentsResponse.ok || !timelineResponse.ok) {
+                throw new Error("The case ledger could not be refreshed after evidence intake.");
+            }
+            const documentsPayload = await documentsResponse.json();
+            const timelinePayload = await timelineResponse.json();
+            const documents = (documentsPayload.documents || []).map(normalizeDocument);
+            const documentById = new Map(documents.map((document) => [String(document.id), document]));
+            const timeline = (timelinePayload.timeline || []).map((event, index) => {
+                const normalized = normalizeTimelineEvent(event, index);
+                const source = documentById.get(String(normalized.source_document_id));
+                if (source && !event.source_url) normalized.source_url = source.url;
+                if (source && !event.source_document_name) normalized.source_document_name = source.name;
+                return normalized;
+            });
             return {
                 documents,
                 timeline,
-                totalWords: documents.reduce((sum, doc) => sum + wordCount(doc.content), 0),
+                totalWords: documents.reduce((sum, document) => sum + wordCount(document.content), 0),
                 completedAt: new Date().toISOString()
             };
         }
 
-        async function buildEvidencePayload() {
+        async function pollGooglePullJobs(caseId, jobIds) {
             try {
-                const backendData = await collectEvidenceFromBackend();
-                if (backendData.documents.length || backendData.timeline.length) return backendData;
-                return {
-                    ...EMPTY_EVIDENCE_DATA,
-                    completedAt: new Date().toISOString(),
-                    empty: true
-                };
+                const payloads = await Promise.all(jobIds.map(async (jobId) => {
+                    const response = await fetch(`${GOOGLE_PULL_JOBS_URL(caseId)}/${encodeURIComponent(jobId)}`, {
+                        credentials: "same-origin",
+                        headers: authHeaders()
+                    });
+                    if (!response.ok) throw new Error("A Google evidence import job could not be refreshed.");
+                    return response.json();
+                }));
+                const jobs = payloads.map((payload) => payload.job).filter(Boolean);
+                renderGooglePullProgress(jobs);
+                const active = jobs.some((job) => ["queued", "running"].includes(job.status));
+                if (active) return;
+                stopGooglePullPolling();
+                const data = await loadPersistedEvidence(caseId);
+                publishEvidence(data);
+                await refreshCommandCenter();
+                const failed = jobs.find((job) => job.status === "failed");
+                if (failed) {
+                    showDashboardToast(failed.error || "One evidence source needs attention.");
+                } else {
+                    showDashboardToast(`Evidence intake complete. ${data.documents.length} source document${data.documents.length === 1 ? "" : "s"} are in this case ledger.`);
+                }
             } catch (error) {
-                document.getElementById("syncStatus").textContent = "Live aggregation is unavailable for this session.";
-                return {
-                    ...EMPTY_EVIDENCE_DATA,
-                    error: error.message
-                };
+                stopGooglePullPolling();
+                document.getElementById("syncStatus").textContent = error.message || "Evidence intake status could not be refreshed.";
+                document.getElementById("pullEvidence").disabled = !googleConnected;
+                updateQuickActions();
             }
         }
 
-        function startEvidencePull() {
+        function startGooglePullPolling(caseId, jobIds) {
+            stopGooglePullPolling();
+            pullTimer = window.setInterval(() => pollGooglePullJobs(caseId, jobIds), 700);
+            pollGooglePullJobs(caseId, jobIds);
+            updateQuickActions();
+        }
+
+        async function resumeGoogleEvidencePull(caseId = currentCaseId()) {
+            if (!Number.isFinite(Number(caseId)) || Number(caseId) <= 0) return;
+            try {
+                const response = await fetch(GOOGLE_PULL_JOBS_URL(caseId), { credentials: "same-origin", headers: authHeaders() });
+                if (!response.ok) return;
+                const jobs = (await response.json()).jobs || [];
+                const active = jobs.filter((job) => ["queued", "running"].includes(job.status));
+                if (active.length) {
+                    renderGooglePullProgress(active);
+                    startGooglePullPolling(caseId, active.map((job) => job.job_id));
+                    return;
+                }
+                const data = await loadPersistedEvidence(caseId);
+                publishEvidence(data);
+            } catch (error) {
+                // The dashboard remains usable when no authenticated case ledger is available yet.
+            }
+        }
+
+        async function startEvidencePull() {
             if (pullTimer) return;
             if (!googleConnected) {
                 showGoogleModal();
                 refreshGoogleConnectionStatus();
                 return;
             }
-
-            const hasKnownWordTotal = Number(currentEvidenceData.totalWords || 0) > 0;
-            const totalWords = Math.max(currentEvidenceData.totalWords || 120, 1);
-            const wordsPerTick = Math.max(6, Math.ceil(totalWords / 12));
-            const tickMs = 180;
-            let processed = 0;
-            const startedAt = performance.now();
-            const sourceLabel = selectedSourceLabel();
-            if (!selectedEvidenceSources().length) {
+            const caseId = Number(currentCaseId());
+            const sources = selectedEvidenceSources();
+            if (!Number.isFinite(caseId) || caseId <= 0) {
+                showDashboardToast("Select a persisted case before pulling evidence.");
+                return;
+            }
+            if (!sources.length) {
                 showDashboardToast("Select at least one evidence source before pulling.");
                 return;
             }
-            document.getElementById("pullEvidence").disabled = true;
-            document.getElementById("syncStatus").textContent = `Pulling ${sourceLabel} evidence...`;
-
-            pullTimer = window.setInterval(() => {
-                processed = Math.min(totalWords, processed + wordsPerTick);
-                const percent = Math.round((processed / totalWords) * 100);
-                const elapsedSeconds = Math.max(0.1, (performance.now() - startedAt) / 1000);
-                const wordsPerSecond = processed / elapsedSeconds;
-                const secondsLeft = Math.max(0, Math.ceil((totalWords - processed) / wordsPerSecond));
-                const progressBar = document.getElementById("pullProgressBar");
-                progressBar.style.width = `${percent}%`;
-                progressBar.setAttribute("aria-valuenow", String(percent));
-                document.getElementById("pullProgressText").textContent = hasKnownWordTotal
-                    ? `Processing word ${processed} of ${totalWords} - about ${secondsLeft}s left`
-                    : `Checking ${sourceLabel} - about ${secondsLeft}s left`;
-                updateWorkspaceDigest();
-
-                if (processed >= totalWords) {
-                    window.clearInterval(pullTimer);
-                    pullTimer = null;
-                    document.getElementById("pullProgressText").textContent = "Live source check complete.";
-                    document.getElementById("syncStatus").textContent = "Finalizing evidence aggregation...";
-                    buildEvidencePayload().then((data) => {
-                        document.getElementById("pullEvidence").disabled = !googleConnected;
-                        document.getElementById("pullProgressText").textContent = `Complete - ${Number(data.totalWords || 0)} words processed.`;
-                        document.getElementById("syncStatus").textContent = data.error
-                            ? "No evidence was loaded because live aggregation is unavailable."
-                            : data.empty
-                                ? "Live aggregation completed. No evidence documents were returned."
-                                : "Evidence, document list, and timeline updated automatically.";
-                        publishEvidence(data);
-                        updateWorkspaceDigest(data);
-                        updateQuickActions(data);
+            try {
+                document.getElementById("pullEvidence").disabled = true;
+                document.getElementById("syncStatus").textContent = `Starting ${selectedSourceLabel()} evidence intake in the local ledger...`;
+                const maxItems = Math.max(1, Math.min(100, Number(expertControlNumberValue("expertMaxItems", 80)) || 80));
+                const requests = sources.map((source) => ({
+                    source,
+                    normalizedSource: source === "gdrive" ? "google_drive" : source,
+                    query: googleQueryForSource(source)
+                }));
+                const daysBack = expertControlNumberValue("expertDaysBack");
+                const sortOrder = expertControlValue("expertSourceOrder") || "newest";
+                const payloads = await Promise.all(requests.map(async ({ source, normalizedSource, query }) => {
+                    const response = await fetch(GOOGLE_PULL_JOBS_URL(caseId), {
+                        method: "POST",
+                        credentials: "same-origin",
+                        headers: { "Content-Type": "application/json", ...authHeaders() },
+                        body: JSON.stringify({ source: normalizedSource, query, max_items: maxItems, days_back: daysBack, sort_order: sortOrder })
                     });
-                }
-            }, tickMs);
-            updateQuickActions();
-            updateWorkspaceDigest(currentEvidenceData);
+                    const payload = await response.json();
+                    if (!response.ok) throw new Error(payload.error || "Google evidence intake could not start.");
+                    return payload;
+                }));
+                const jobs = payloads.map((payload) => payload.job).filter(Boolean);
+                renderGooglePullProgress(jobs);
+                startGooglePullPolling(caseId, jobs.map((job) => job.job_id));
+            } catch (error) {
+                document.getElementById("pullEvidence").disabled = !googleConnected;
+                document.getElementById("syncStatus").textContent = error.message || "Evidence intake could not start.";
+                showDashboardToast(error.message || "Evidence intake could not start.");
+                updateQuickActions();
+            }
         }
 
         function isLegacyMockEvidence(data) {
@@ -4396,6 +4466,7 @@
         if (!handleGoogleReturnState()) refreshGoogleConnectionStatus();
         refreshEvidenceFromStorage();
         refreshCommandCenter();
+        resumeGoogleEvidencePull();
         activateDashboardLinks();
         window.setInterval(refreshGoogleConnectionStatus, 15000);
     </script>

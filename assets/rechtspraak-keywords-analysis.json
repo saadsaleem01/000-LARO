@@ -1,0 +1,500 @@
+{
+  "generated_at": "2025-10-26T18:59:30.550684",
+  "total_areas": 26,
+  "total_cases": 5400,
+  "keywords_by_area": {
+    "Personen- en Familierecht": {
+      "case_count": 200,
+      "top_keywords": [
+        {
+          "keyword": "verlenen",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "rbmaa",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "rbroe",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "roermond",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "besluit",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "state",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "haar",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "algemene",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "aawao",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "gesteld",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "vrijstelling",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "vraag",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "nabw",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "rbalk",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "alkmaar",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "bestemmingsplan",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "centrale",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "beroep",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "arbeidsongeschiktheidsverzekering",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "rbgro",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "schade",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "verweerders",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "rblee",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "rijksbeleid",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "gebruik",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "bouwvergunning",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "windmolenpark",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "bouw",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "recht",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "verzocht",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "hierna",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "prinses",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "margriet",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "binnenplanse",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "weigering",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "crvb",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "toegekende",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "arbeidsongeschiktheidsuitkering",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "arbeidsongeschiktheidswet",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "ingetrokken",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "berekend",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "mate",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "arbeidsongeschiktheid",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "hoofdelijk",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "aansprakelijk",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "betrekking",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "plan",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "hetgeen",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "leerlinge",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "rbzut",
+          "tfidf_score": 0.053
+        }
+      ]
+    },
+    "Erfrecht": {
+      "case_count": 200,
+      "top_keywords": [
+        {
+          "keyword": "verlenen",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "rbmaa",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "rbroe",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "roermond",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "besluit",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "state",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "haar",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "algemene",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "aawao",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "gesteld",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "vrijstelling",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "vraag",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "nabw",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "rbalk",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "alkmaar",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "bestemmingsplan",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "centrale",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "beroep",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "arbeidsongeschiktheidsverzekering",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "rbgro",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "schade",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "verweerders",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "rblee",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "rijksbeleid",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "gebruik",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "bouwvergunning",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "windmolenpark",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "bouw",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "recht",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "verzocht",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "hierna",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "prinses",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "margriet",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "binnenplanse",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "weigering",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "crvb",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "toegekende",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "arbeidsongeschiktheidsuitkering",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "arbeidsongeschiktheidswet",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "ingetrokken",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "berekend",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "mate",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "arbeidsongeschiktheid",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "hoofdelijk",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "aansprakelijk",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "betrekking",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "plan",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "hetgeen",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "leerlinge",
+          "tfidf_score": 0.053
+        },
+        {
+          "keyword": "rbzut",
+          "tfidf_score": 0.053
+        }
+      ]
+    },
+    "Arbeidsrecht": {
+      "case_count": 200,
+      "top_keywords": [
+        {
+          "keyword": "verlenen",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "rbmaa",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "rbroe",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "roermond",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "besluit",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "state",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "haar",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "algemene",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "aawao",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "gesteld",
+          "tfidf_score": 0.106
+        },
+        {
+          "keyword": "vrijstelling",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "vraag",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "nabw",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "rbalk",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "alkmaar",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "bestemmingsplan",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "centrale",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "beroep",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "arbeidsongeschiktheidsverzekering",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "rbgro",
+          "tfidf_score": 0.0795
+        },
+        {
+          "keyword": "schade",

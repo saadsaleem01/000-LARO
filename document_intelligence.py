@@ -13,9 +13,14 @@ import re
 from collections import Counter
 from typing import Any, Dict, Iterable, List, Optional
 
+from local_semantic_analysis import LocalSemanticAnalysisProvider
+
 
 class DocumentIntelligenceEngine:
     """Extracts legal signals and evidence facts from document contents."""
+
+    def __init__(self, semantic_provider: Optional[LocalSemanticAnalysisProvider] = None) -> None:
+        self.semantic_provider = semantic_provider or LocalSemanticAnalysisProvider()
 
     DATE_PATTERNS = [
         re.compile(r"\b(?P<date>\d{4}[-/]\d{1,2}[-/]\d{1,2})\b"),
@@ -208,6 +213,17 @@ class DocumentIntelligenceEngine:
         "ontruiming",
     ]
 
+    # These labels describe what the source sentence appears to contain. They
+    # are not legal conclusions and every result remains review-gated.
+    STATEMENT_CUES = {
+        "deadline": ["deadline", "termijn", "uiterlijk", "binnen", "due", "before"],
+        "obligation": ["moet", "dient", "verplicht", "shall", "must", "required", "obliged"],
+        "decision": ["besluit", "beschikking", "vonnis", "uitspraak", "decision", "judgment", "ruling"],
+        "allegation": ["stelt", "gesteld", "beweert", "claimt", "alleges", "claims", "according to"],
+        "request": ["verzoek", "verzoeken", "verzoekt", "request", "requested", "please provide"],
+        "procedure": ["bezwaar", "beroep", "rechtbank", "zitting", "dagvaarding", "appeal", "court"],
+    }
+
     def enrich_document(self, document: Dict[str, Any], case_context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         """Return a copy of document with extracted text and legal analysis."""
         enriched = dict(document)
@@ -257,8 +273,9 @@ class DocumentIntelligenceEngine:
             for index, event in enumerate(chronology_events):
                 date = event.get("date") or str(document.get("upload_date", ""))[:10] or "Unknown date"
                 description = event.get("description") or analysis.get("summary") or document_name
-                actor = self._timeline_actor(description, document)
-                action = self._timeline_action(description)
+                event_fields = self.timeline_event_fields(description, document)
+                actor = event.get("actor") or event_fields["actor"]
+                action = event.get("action") or event_fields["action"]
                 events.append(
                     {
                         "timeline_id": f"{document_id}-{index}",
@@ -266,6 +283,8 @@ class DocumentIntelligenceEngine:
                         "summary": self._timeline_summary(description),
                         "actor": actor,
                         "action": action,
+                        "affected_party": event.get("affected_party") or event_fields["affected_party"],
+                        "event_kind": event.get("event_kind") or event_fields["event_kind"],
                         "event_label": f"{actor} {action}".strip(),
                         "evidence_quote": self._timeline_quote(description),
                         "source_document_id": document_id,
@@ -326,16 +345,24 @@ class DocumentIntelligenceEngine:
         """Analyze text and return a stable legal evidence object."""
         metadata = metadata or {}
         normalized = self._clean_text(text)
-        sentences = self._split_sentences(normalized)
-        dates = self._extract_dates(sentences)
+        passages = self._build_source_passages(normalized)
+        sentences = [item["text"] for item in passages]
+        dates = self._extract_dates(passages)
         legal_references = self._extract_legal_references(normalized)
         topics = self._detect_topics(normalized)
         document_type = self._classify_document_type(document_name, normalized, metadata)
         key_sentences = self._select_key_sentences(sentences)
         obligations = self._select_sentences(sentences, self.OBLIGATION_WORDS, limit=6)
         risk_flags = self._detect_risks(sentences)
-        chronology_events = self._build_chronology_events(dates)
+        chronology_events = [
+            {
+                **event,
+                **self.timeline_event_fields(event.get("description") or "", metadata),
+            }
+            for event in self._build_chronology_events(dates)
+        ]
         relevance_score = self._score_relevance(normalized, dates, legal_references, topics, key_sentences)
+        semantic_reading = self.semantic_provider.analyze(normalized, document_name=document_name)
 
         return {
             "readable": bool(normalized),
@@ -357,11 +384,20 @@ class DocumentIntelligenceEngine:
                 "chronology_events": chronology_events,
                 "suggested_evidence_role": self._suggest_evidence_role(document_type, topics, risk_flags),
             },
+            "findings": self._build_source_findings(passages),
+            "semantic_reading": semantic_reading,
             "processing": {
                 "text_length": len(normalized),
                 "word_count": len(normalized.split()),
                 "sentence_count": len(sentences),
                 "confidence": self._confidence(normalized, legal_references, dates),
+                "analysis_method": "rule_based_source_passage_v1",
+                "semantic_analysis_status": semantic_reading.get("status") or "disabled",
+                "semantic_analysis_provider": semantic_reading.get("provider") or "rule_based",
+                "analysis_limits": [
+                    "Findings identify source passages for review; they do not establish legal facts or legal advice.",
+                    "Only material rule-matched passages are listed. The original document remains the authoritative source.",
+                ],
             },
         }
 
@@ -409,10 +445,32 @@ class DocumentIntelligenceEngine:
             return []
         return [part.strip() for part in re.split(r"(?<=[.!?])\s+", text) if part.strip()]
 
-    def _extract_dates(self, sentences: Iterable[str]) -> List[Dict[str, str]]:
+    def _build_source_passages(self, text: str) -> List[Dict[str, Any]]:
+        """Return stable sentence locators without storing a second full copy of a document."""
+        passages = []
+        for match in re.finditer(r"[^.!?]+(?:[.!?]+|$)", text or ""):
+            raw = match.group(0)
+            leading = len(raw) - len(raw.lstrip())
+            trailing = len(raw) - len(raw.rstrip())
+            start = match.start() + leading
+            end = match.end() - trailing
+            sentence = text[start:end].strip()
+            if not sentence:
+                continue
+            passages.append({
+                "id": f"p{len(passages) + 1}",
+                "text": sentence,
+                "start_char": start,
+                "end_char": end,
+            })
+        return passages
+
+    def _extract_dates(self, sentences: Iterable[Any]) -> List[Dict[str, Any]]:
         dates = []
         seen = set()
-        for sentence in sentences:
+        for source in sentences:
+            passage = source if isinstance(source, dict) else {}
+            sentence = str(passage.get("text") if passage else source or "")
             for pattern in self.DATE_PATTERNS:
                 for match in pattern.finditer(sentence):
                     raw = match.group("date")
@@ -421,14 +479,63 @@ class DocumentIntelligenceEngine:
                     if key in seen:
                         continue
                     seen.add(key)
-                    dates.append(
-                        {
-                            "raw": raw,
-                            "normalized": normalized or raw,
-                            "context": sentence[:220],
+                    item = {
+                        "raw": raw,
+                        "normalized": normalized or raw,
+                        "context": sentence[:220],
+                    }
+                    if passage:
+                        item["source_locator"] = {
+                            "passage_id": passage.get("id"),
+                            "start_char": passage.get("start_char", 0) + match.start(),
+                            "end_char": passage.get("start_char", 0) + match.end(),
                         }
-                    )
+                    dates.append(item)
         return dates
+
+    def _statement_categories(self, text: str) -> List[str]:
+        lowered = text.lower()
+        categories = [
+            category
+            for category, cues in self.STATEMENT_CUES.items()
+            if any(cue in lowered for cue in cues)
+        ]
+        return categories or ["factual_statement"]
+
+    def _build_source_findings(self, passages: List[Dict[str, Any]], limit: int = 24) -> Dict[str, Any]:
+        """Expose reviewable, bounded source passages for downstream legal workflows."""
+        statements = []
+        category_counts = Counter()
+        for passage in passages:
+            text = passage["text"]
+            categories = self._statement_categories(text)
+            has_date = any(pattern.search(text) for pattern in self.DATE_PATTERNS)
+            has_reference = bool(self._extract_legal_references(text))
+            has_money = bool(self._extract_money(text))
+            material = categories != ["factual_statement"] or has_date or has_reference or has_money
+            if not material:
+                continue
+            for category in categories:
+                category_counts[category] += 1
+            statements.append({
+                "passage_id": passage["id"],
+                "categories": categories,
+                "excerpt": text[:320],
+                "source_locator": {
+                    "start_char": passage["start_char"],
+                    "end_char": passage["end_char"],
+                },
+                "requires_review": any(category != "factual_statement" for category in categories),
+                "confidence": "rule_based",
+            })
+            if len(statements) >= limit:
+                break
+        return {
+            "source_passages": statements,
+            "material_statement_count": len(statements),
+            "category_counts": dict(sorted(category_counts.items())),
+            "complete_statement_inventory": False,
+        }
 
     def _normalize_date(self, raw: str) -> Optional[str]:
         cleaned = raw.strip().replace(".", "").replace(",", "")
@@ -578,12 +685,13 @@ class DocumentIntelligenceEngine:
                 break
         return risks
 
-    def _build_chronology_events(self, dates: List[Dict[str, str]]) -> List[Dict[str, str]]:
+    def _build_chronology_events(self, dates: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         return [
             {
                 "date": item["normalized"],
                 "description": item["context"],
                 "source": "document_intelligence",
+                "source_locator": item.get("source_locator") or {},
             }
             for item in dates
             if item.get("normalized")
@@ -642,6 +750,18 @@ class DocumentIntelligenceEngine:
             return cleaned
         return cleaned[:177].rstrip() + "..."
 
+    def timeline_event_fields(self, text: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, str]:
+        """Return conservative who/did-what fields grounded in source text or envelope metadata."""
+        metadata = metadata or {}
+        actor = self._timeline_actor(text, metadata)
+        action = self._timeline_action(text)
+        return {
+            "actor": actor,
+            "action": action,
+            "affected_party": self._timeline_affected_party(text, metadata, actor),
+            "event_kind": self._timeline_event_kind(action, text),
+        }
+
     def _timeline_actor(self, text: str, metadata: Dict[str, Any]) -> str:
         for key in ("from", "sender", "author", "created_by"):
             value = metadata.get(key)
@@ -653,6 +773,14 @@ class DocumentIntelligenceEngine:
         match = re.search(verb_pattern, cleaned, flags=re.IGNORECASE)
         if match:
             candidate = cleaned[:match.start()].strip(" ,.;:-")
+            if "," in candidate:
+                candidate = candidate.rsplit(",", 1)[-1].strip()
+            candidate = re.sub(
+                r"^(?:on|op)\s+\d{4}[-/]\d{1,2}[-/]\d{1,2}\s*",
+                "",
+                candidate,
+                flags=re.IGNORECASE,
+            ).strip(" ,.;:-")
             words = candidate.split()
             if words:
                 return " ".join(words[-4:])[:80]
@@ -666,27 +794,84 @@ class DocumentIntelligenceEngine:
         lowered = self._clean_text(text).lower()
         action_map = [
             ("sent", "sent"),
+            ("verzond", "sent"),
             ("received", "received"),
+            ("ontving", "received"),
             ("wrote", "wrote"),
+            ("schreef", "wrote"),
             ("stated", "stated"),
+            ("verklaarde", "stated"),
             ("decided", "decided"),
+            ("decision", "decided"),
+            ("besloot", "decided"),
+            ("beslissing", "decided"),
             ("invoic", "issued invoice"),
+            ("factuur", "issued invoice"),
             ("demand", "demanded"),
+            ("sommeerde", "demanded"),
             ("request", "requested"),
+            ("verzocht", "requested"),
             ("confirm", "confirmed"),
+            ("bevestigde", "confirmed"),
             ("explain", "explained"),
+            ("lichtte toe", "explained"),
             ("file", "filed"),
+            ("diende", "filed"),
             ("paid", "paid"),
+            ("betaalde", "paid"),
             ("reject", "rejected"),
+            ("wees af", "rejected"),
             ("approv", "approved"),
+            ("keurde goed", "approved"),
             ("deadline", "set deadline"),
+            ("uiterlijk", "set deadline"),
+            ("termijn", "set deadline"),
             ("must", "created obligation"),
+            ("shall", "created obligation"),
             ("moet", "created obligation"),
+            ("dient", "created obligation"),
         ]
         for needle, action in action_map:
             if needle in lowered:
                 return action
         return "documented"
+
+    def _timeline_affected_party(self, text: str, metadata: Dict[str, Any], actor: str) -> str:
+        for key in ("to", "recipient", "affected_party", "addressee"):
+            value = metadata.get(key)
+            if isinstance(value, str) and value.strip() and value.strip().lower() != actor.lower():
+                return value.strip()[:255]
+
+        cleaned = self._clean_text(text)
+        patterns = (
+            r"\b(?:stated|states|decided|requested|demanded|confirmed|verklaarde|besloot|verzocht|sommeerde|bevestigde)\s+(?:that\s+)?([A-Z][A-Za-z0-9 .'-]{1,60}?)\s+(?:must|shall|should|moet|dient)\b",
+            r"\b(?:to|aan|tegen)\s+([A-Z][A-Za-z0-9 .'-]{1,60}?)(?:\s+on\s+behalf|\s+op\s+|[,.;:]|$)",
+        )
+        for pattern in patterns:
+            match = re.search(pattern, cleaned)
+            if match:
+                candidate = match.group(1).strip(" ,.;:-")
+                if candidate and candidate.lower() != actor.lower():
+                    return candidate[:255]
+        return ""
+
+    def _timeline_event_kind(self, action: str, text: str) -> str:
+        if action in {"sent", "received", "wrote", "stated", "requested", "confirmed", "explained", "demanded"}:
+            return "communication"
+        if action in {"decided", "approved", "rejected"}:
+            return "decision"
+        if action == "filed":
+            return "filing"
+        if action in {"paid", "issued invoice"}:
+            return "financial"
+        if action == "created obligation":
+            return "obligation"
+        if action == "set deadline":
+            return "deadline"
+        lowered = self._clean_text(text).lower()
+        if any(term in lowered for term in ("hearing", "zitting", "hoorzitting")):
+            return "hearing"
+        return "event"
 
     def _timeline_sort_key(self, date_value: str) -> str:
         normalized = self._normalize_date(str(date_value))

@@ -1,0 +1,21 @@
+Copyright (c) 2026 LARO. All rights reserved.
+
+This software and its source code are proprietary and confidential.
+
+No part of this software may be reproduced, distributed, or transmitted in any
+form or by any means, including copying, modification, merging, publishing, or
+sublicensing, without the prior written permission of the copyright holder,
+except as permitted by an explicit separate agreement.
+
+Third-party dependencies are licensed under their own terms; see
+docs/LICENSES.md for the dependency license inventory.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+LARO assists with legal-case preparation and lawyer matching. It does not provide
+legal advice and is not a substitute for a qualified lawyer.

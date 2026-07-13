@@ -340,6 +340,15 @@ class EmailAuthenticationSystem:
             # Set user email in session
             session['user_email'] = session_data['email']
             session['user_type'] = session_data['type']
+
+            # Case routes carry highly sensitive legal material. The application
+            # injects a ledger ownership check once its persistent ledger is
+            # initialized, so every authenticated case endpoint has one guard.
+            case_id = kwargs.get('case_id') or (request.view_args or {}).get('case_id')
+            case_access_check = self.app.config.get('LARO_CASE_ACCESS_CHECK')
+            if case_id is not None and callable(case_access_check):
+                if not case_access_check(case_id, session_data['email']):
+                    return jsonify({'error': 'Case not found'}), 404
             
             return f(*args, **kwargs)
         return decorated

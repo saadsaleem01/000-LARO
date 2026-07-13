@@ -337,6 +337,41 @@
             grid-template-columns: repeat(4, minmax(0, 1fr));
         }
 
+        .analysis-coverage {
+            align-items: center;
+            background: rgba(95, 183, 173, 0.08);
+            border: 1px solid rgba(95, 183, 173, 0.34);
+            border-radius: 8px;
+            display: grid;
+            gap: 0.8rem;
+            grid-template-columns: minmax(0, 1fr) auto;
+            padding: 0.85rem;
+        }
+
+        .analysis-coverage.is-partial {
+            background: var(--timeline-orange-soft);
+            border-color: rgba(255, 107, 0, 0.46);
+        }
+
+        .analysis-coverage strong,
+        .analysis-coverage p {
+            margin: 0;
+        }
+
+        .analysis-coverage p {
+            color: var(--timeline-muted);
+            font-size: 0.86rem;
+            line-height: 1.45;
+            margin-top: 0.25rem;
+        }
+
+        .coverage-heading {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.55rem;
+        }
+
         .timeline-next-actions {
             grid-template-columns: repeat(3, minmax(0, 1fr));
         }
@@ -450,6 +485,19 @@
             padding: 1rem;
         }
 
+        .timeline-node.is-proposal .timeline-card {
+            border-color: rgba(255, 107, 0, 0.56);
+            box-shadow: inset 3px 0 0 var(--timeline-orange), 0 14px 28px rgba(0, 0, 0, 0.22);
+        }
+
+        .timeline-node.is-confirmed .timeline-card {
+            border-color: rgba(95, 183, 173, 0.42);
+        }
+
+        .timeline-node.is-rejected {
+            opacity: 0.66;
+        }
+
         .timeline-node.left .timeline-card {
             grid-column: 1;
             text-align: right;
@@ -495,11 +543,11 @@
             display: inline-flex;
             font-size: 1rem;
             font-weight: 900;
-            height: 38px;
+            height: 44px;
             justify-content: center;
             line-height: 1;
             position: relative;
-            width: 38px;
+            width: 44px;
             z-index: 2;
         }
 
@@ -516,6 +564,23 @@
             font-weight: 850;
             line-height: 1;
             margin-bottom: 0.35rem;
+        }
+
+        .event-status-row {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            justify-content: space-between;
+            margin-bottom: 0.45rem;
+        }
+
+        .event-status-row .event-date {
+            margin-bottom: 0;
+        }
+
+        .timeline-node.left .event-status-row {
+            flex-direction: row-reverse;
         }
 
         .event-source {
@@ -554,6 +619,21 @@
             justify-content: flex-end;
         }
 
+        .timeline-event-actions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.8rem;
+        }
+
+        .timeline-node.left .timeline-event-actions {
+            justify-content: flex-end;
+        }
+
+        .timeline-event-actions .btn {
+            min-height: 40px;
+        }
+
         .evidence-timeline.is-horizontal {
             display: flex;
             gap: 1.15rem;
@@ -580,6 +660,15 @@
         .evidence-timeline.is-horizontal .timeline-card {
             min-height: 190px;
             text-align: left;
+        }
+
+        .evidence-timeline.is-horizontal .timeline-node.left .event-status-row {
+            flex-direction: row;
+        }
+
+        .evidence-timeline.is-horizontal .timeline-node.left .event-meta,
+        .evidence-timeline.is-horizontal .timeline-node.left .timeline-event-actions {
+            justify-content: flex-start;
         }
 
         .evidence-timeline.is-horizontal .timeline-spine {
@@ -761,6 +850,13 @@
             white-space: pre-wrap;
         }
 
+        .source-passage-highlight {
+            background: rgba(255, 107, 0, 0.28);
+            border-radius: 3px;
+            color: #fff;
+            padding: 0.08rem 0.12rem;
+        }
+
         @media (max-width: 1100px) {
             .app-shell,
             .case-bar,
@@ -793,6 +889,11 @@
 
             .timeline-stats,
             .timeline-next-actions {
+                grid-template-columns: 1fr;
+            }
+
+            .analysis-coverage {
+                align-items: flex-start;
                 grid-template-columns: 1fr;
             }
 
@@ -843,6 +944,14 @@
             }
 
             .timeline-node.left .event-meta {
+                justify-content: flex-start;
+            }
+
+            .timeline-node.left .event-status-row {
+                flex-direction: row;
+            }
+
+            .timeline-node.left .timeline-event-actions {
                 justify-content: flex-start;
             }
 
@@ -916,6 +1025,7 @@
                     <span class="timeline-count" id="timelineSourceMode">loading ledger</span>
                 </div>
                 <div class="timeline-stats" id="timelineStats"></div>
+                <section class="analysis-coverage" id="analysisCoverage" aria-live="polite" hidden></section>
                 <div class="timeline-next-actions">
                     <button class="timeline-action-card" type="button" data-timeline-action="vertical">
                         <strong>Read vertical story</strong>
@@ -942,8 +1052,8 @@
                 </select>
                 <span class="timeline-count" id="timelineCount">0 items</span>
                 <div class="view-toggle" aria-label="Timeline view">
-                    <button class="view-button is-active" type="button" data-view="vertical">Vertical</button>
-                    <button class="view-button" type="button" data-view="horizontal">Horizontal</button>
+                    <button class="view-button is-active" type="button" data-view="vertical" aria-pressed="true">Vertical</button>
+                    <button class="view-button" type="button" data-view="horizontal" aria-pressed="false">Horizontal</button>
                 </div>
             </section>
 
@@ -953,7 +1063,7 @@
                         <h2>Evidence Timeline</h2>
                         <span class="timeline-count" id="timelineRange">Chronological evidence</span>
                     </div>
-                    <div class="evidence-timeline" id="evidenceTimeline" aria-live="polite"></div>
+                    <div class="evidence-timeline" id="evidenceTimeline" role="list" aria-label="Source-linked case chronology" aria-live="polite"></div>
                 </div>
 
                 <aside class="document-panel guided-depth" aria-label="Source documents">
@@ -1005,7 +1115,11 @@
         let casesData = [];
         let documentsData = [];
         let evidenceLinksData = [];
+        let caseAnalysisData = { runs: [], latest: null };
+        let missingEvidenceData = [];
         let sourcePreviewDocumentId = null;
+        let sourcePreviewSnippet = "";
+        let sourcePreviewReturnFocus = null;
 
         function escapeHtml(value) {
             return String(value ?? "").replace(/[&<>"']/g, (char) => ({
@@ -1045,17 +1159,20 @@
             return data.token;
         }
 
-        async function apiFetch(url, retry = true) {
+        async function apiFetch(url, options = {}, retry = true) {
             const token = await ensureAuth();
             const response = await fetch(url, {
+                ...options,
                 headers: {
                     Accept: "application/json",
+                    ...(options.body ? { "Content-Type": "application/json" } : {}),
+                    ...(options.headers || {}),
                     Authorization: `Bearer ${token}`
                 }
             });
             if (response.status === 401 && retry) {
                 await ensureAuth(true);
-                return apiFetch(url, false);
+                return apiFetch(url, options, false);
             }
             const data = await response.json().catch(async () => ({ error: await response.text().catch(() => "") }));
             if (!response.ok) throw new Error(data.error || `Request failed: ${response.status}`);
@@ -1089,10 +1206,17 @@
             return evidenceLinksData.filter((link) => link.target_type === targetType && String(link.target_id) === String(targetId));
         }
 
-        function primaryEvidenceLink(targetType, targetId, fallbackDocumentId = "") {
-            return evidenceLinksFor(targetType, targetId)[0]
-                || evidenceLinksData.find((link) => fallbackDocumentId && String(link.document_id) === String(fallbackDocumentId))
-                || null;
+        function primaryEvidenceLink(targetType, targetId) {
+            return evidenceLinksFor(targetType, targetId)[0] || null;
+        }
+
+        function updateTimelineUrlState() {
+            const url = new URL(window.location.href);
+            if (selectedCaseId) url.searchParams.set("case_id", String(selectedCaseId));
+            else url.searchParams.delete("case_id");
+            url.searchParams.set("view", timelineView);
+            url.searchParams.set("depth", timelineDepth);
+            history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
         }
 
         function setTimelineDepth(depth) {
@@ -1109,13 +1233,17 @@
                 button.setAttribute("aria-pressed", String(active));
             });
             document.getElementById("timelineDepthNote").textContent = DEPTH_NOTES[timelineDepth];
+            updateTimelineUrlState();
         }
 
         function setTimelineView(view) {
             timelineView = view === "horizontal" ? "horizontal" : "vertical";
             document.querySelectorAll("[data-view]").forEach((button) => {
-                button.classList.toggle("is-active", button.dataset.view === timelineView);
+                const active = button.dataset.view === timelineView;
+                button.classList.toggle("is-active", active);
+                button.setAttribute("aria-pressed", String(active));
             });
+            updateTimelineUrlState();
             applyFilters();
         }
 
@@ -1126,10 +1254,8 @@
         }
 
         function updateCaseUrl(caseId) {
-            const url = new URL(window.location.href);
-            if (caseId) url.searchParams.set("case_id", String(caseId));
-            else url.searchParams.delete("case_id");
-            history.replaceState(null, "", `${url.pathname}${url.search}${url.hash}`);
+            selectedCaseId = caseId ? Number(caseId) : null;
+            updateTimelineUrlState();
         }
 
         function renderCaseSelector() {
@@ -1161,7 +1287,7 @@
         function normalizedEvent(event) {
             const sourceDocumentId = event.created_from_document_id || event.source_document_id || "";
             const doc = documentById(sourceDocumentId) || {};
-            const link = primaryEvidenceLink("event", event.id, sourceDocumentId);
+            const link = primaryEvidenceLink("event", event.id);
             const date = event.event_date || event.date || "";
             const title = event.title || "Timeline event";
             const summary = event.description || event.summary || title;
@@ -1183,8 +1309,45 @@
                 relevance_score: Number.isFinite(relevance) ? relevance : 0,
                 source_confidence: Number(event.source_confidence || link?.source_confidence || 0),
                 user_confirmed: Boolean(event.user_confirmed),
-                review_status: event.review_status || (event.user_confirmed ? "confirmed" : "needs_review")
+                review_status: event.review_status || (event.user_confirmed ? "confirmed" : "needs_review"),
+                _analysisProposal: false
             };
+        }
+
+        function caseAnalysisTimelineProposals() {
+            const run = caseAnalysisData?.latest;
+            const suggestions = run?.content?.timeline_suggestions || [];
+            const reviewItems = new Map((run?.review_items || []).map((item) => [item.finding_key, item]));
+            return suggestions.map((suggestion, index) => {
+                const reviewItem = reviewItems.get(`timeline_suggestion:${index}`);
+                if (!reviewItem || reviewItem.status !== "needs_review") return null;
+                const source = (suggestion.sources || [])[0] || {};
+                const sourceDocumentId = source.document_id || "";
+                const doc = documentById(sourceDocumentId) || {};
+                const actor = doc.sender || caseData?.court_or_institution || "Unknown party";
+                return {
+                    id: `analysis-${reviewItem.id}`,
+                    analysis_review_id: reviewItem.id,
+                    analysis_run_id: run.id,
+                    date: suggestion.event_date || "",
+                    actor,
+                    action: "case_analysis_proposal",
+                    event_label: `${actor} - ${suggestion.title || "Cited timeline proposal"}`,
+                    summary: suggestion.description || "Review the cited passage before confirming this event.",
+                    source_document_id: sourceDocumentId,
+                    source_document_name: documentTitle(doc, sourceDocumentId ? `Document ${sourceDocumentId}` : "No source linked"),
+                    source: doc.source_type || "case analysis",
+                    source_url: doc.source_uri || "",
+                    document_type: doc.document_type || "document",
+                    evidence_quote: source.source_quote || "",
+                    relevance_score: 0,
+                    source_confidence: 0,
+                    user_confirmed: false,
+                    review_status: "needs_review",
+                    source_refs: suggestion.sources || [],
+                    _analysisProposal: true
+                };
+            }).filter(Boolean);
         }
 
         function sortTimeline(events) {
@@ -1192,8 +1355,8 @@
         }
 
         function sourceDocuments(events) {
-            const documentIds = new Set(events.map((event) => event.source_document_id).filter(Boolean));
-            const sourceDocs = documentsData.filter((doc) => documentIds.has(documentId(doc)));
+            const documentIds = new Set(events.map((event) => event.source_document_id).filter(Boolean).map(String));
+            const sourceDocs = documentsData.filter((doc) => documentIds.has(String(documentId(doc))));
             const docs = sourceDocs.length ? sourceDocs : documentsData;
             return docs.map((doc) => ({
                 id: documentId(doc),
@@ -1217,6 +1380,87 @@
             typeSelect.value = types.includes(currentType) ? currentType : "all";
         }
 
+        function coverageNumber(value, fallback = 0) {
+            const parsed = Number(value);
+            return Number.isFinite(parsed) ? parsed : fallback;
+        }
+
+        function renderAnalysisCoverage() {
+            const panel = document.getElementById("analysisCoverage");
+            const run = caseAnalysisData?.latest;
+            const content = run?.content || {};
+            const coverage = content.source_coverage || {};
+            if (!run || !Object.keys(coverage).length) {
+                panel.hidden = true;
+                panel.innerHTML = "";
+                return;
+            }
+
+            const sources = run.source_documents || [];
+            const readable = coverageNumber(coverage.sources_readable, sources.length);
+            const represented = coverageNumber(coverage.sources_represented, readable);
+            const fullyRead = coverageNumber(coverage.sources_fully_read, sources.filter((source) => !source.source_was_truncated).length);
+            const partiallyRead = coverageNumber(coverage.sources_partially_read, Math.max(0, represented - fullyRead));
+            const charactersAnalyzed = coverageNumber(coverage.characters_analyzed, content.source_characters_analyzed || 0);
+            const charactersTotal = coverageNumber(coverage.characters_total, sources.reduce((total, source) => total + coverageNumber(source.source_characters_total), 0));
+            const coveragePercent = coverage.coverage_percent ?? (charactersTotal ? Math.round((charactersAnalyzed / charactersTotal) * 1000) / 10 : null);
+            const partialSource = sources.find((source) => source.source_was_truncated);
+            const coverageWarning = missingEvidenceData.find((warning) => warning.warning_type === "analysis_partial_coverage" && !["resolved", "dismissed"].includes(warning.status));
+            const isPartial = Boolean(content.source_was_truncated || partiallyRead || represented < readable || coverageWarning);
+            const detail = charactersTotal
+                ? `${charactersAnalyzed.toLocaleString()} of ${charactersTotal.toLocaleString()} source characters analyzed${coveragePercent !== null ? ` (${coveragePercent}% coverage)` : ""}.`
+                : `${represented} of ${readable} readable sources represented.`;
+            const guidance = coverageWarning?.suggested_action
+                || (isPartial
+                    ? "Review omitted passages in the original source before relying on this synthesis."
+                    : "All readable sources in the latest analysis run were fully represented.");
+
+            panel.hidden = false;
+            panel.classList.toggle("is-partial", isPartial);
+            panel.innerHTML = `
+                <div>
+                    <div class="coverage-heading">
+                        <strong>${isPartial ? "Partial analysis coverage" : "Analysis coverage complete"}</strong>
+                        <span class="event-pill">${escapeHtml(represented)} / ${escapeHtml(readable)} sources</span>
+                        <span class="event-pill">${escapeHtml(fullyRead)} full${partiallyRead ? ` / ${escapeHtml(partiallyRead)} partial` : ""}</span>
+                    </div>
+                    <p>${escapeHtml(detail)} ${escapeHtml(guidance)}</p>
+                </div>
+                ${partialSource?.document_id ? `<button class="source-jump coverage-source-jump" type="button" data-document-id="${escapeHtml(partialSource.document_id)}" aria-label="Open partially analyzed source document" title="Open partial source">?</button>` : ""}
+            `;
+            panel.querySelector(".coverage-source-jump")?.addEventListener("click", (event) => {
+                openSourcePreview(event.currentTarget.dataset.documentId).catch((error) => showToast(error.message));
+            });
+        }
+
+        function timelineReviewControls(event) {
+            if (event._analysisProposal) {
+                return `
+                    <div class="timeline-event-actions">
+                        <button class="btn btn-primary analysis-review-action" type="button" data-analysis-review-id="${escapeHtml(event.analysis_review_id)}" data-analysis-action="confirm_timeline">Confirm event</button>
+                        <button class="btn btn-outline analysis-review-action guided-depth" type="button" data-analysis-review-id="${escapeHtml(event.analysis_review_id)}" data-analysis-action="timeline">Prepare for edit</button>
+                        <button class="btn btn-outline analysis-review-action expert-depth" type="button" data-analysis-review-id="${escapeHtml(event.analysis_review_id)}" data-analysis-action="dismiss">Dismiss</button>
+                    </div>
+                `;
+            }
+            if (event.review_status === "needs_review") {
+                return `
+                    <div class="timeline-event-actions">
+                        <button class="btn btn-primary timeline-review-action" type="button" data-event-id="${escapeHtml(event.id)}" data-event-action="approve">Confirm event</button>
+                        <button class="btn btn-outline timeline-review-action guided-depth" type="button" data-event-id="${escapeHtml(event.id)}" data-event-action="reject">Reject</button>
+                    </div>
+                `;
+            }
+            if (event.review_status === "rejected") {
+                return `
+                    <div class="timeline-event-actions guided-depth">
+                        <button class="btn btn-outline timeline-review-action" type="button" data-event-id="${escapeHtml(event.id)}" data-event-action="approve">Restore event</button>
+                    </div>
+                `;
+            }
+            return "";
+        }
+
         function renderTimeline(events) {
             const timeline = document.getElementById("evidenceTimeline");
             const count = document.getElementById("timelineCount");
@@ -1233,31 +1477,50 @@
 
             events.forEach((event, index) => {
                 const side = index % 2 === 0 ? "left" : "right";
+                const statusClass = event._analysisProposal
+                    ? "is-proposal"
+                    : event.review_status === "confirmed"
+                        ? "is-confirmed"
+                        : event.review_status === "rejected"
+                            ? "is-rejected"
+                            : "is-review";
+                const statusLabel = event._analysisProposal ? "cited proposal" : event.review_status || "needs review";
                 const node = document.createElement("article");
-                node.className = `timeline-node ${side}`;
+                node.className = `timeline-node ${side} ${statusClass}`;
                 node.dataset.eventId = event.id || "";
+                node.setAttribute("role", "listitem");
+                node.setAttribute("aria-label", `${formatDate(event.date)}: ${event.event_label}. ${statusLabel}.`);
                 node.innerHTML = `
                     <div class="timeline-card">
-                        <div class="event-date">${escapeHtml(formatDate(event.date))}</div>
+                        <div class="event-status-row">
+                            <div class="event-date">${escapeHtml(formatDate(event.date))}</div>
+                            <span class="event-pill">${escapeHtml(statusLabel)}</span>
+                        </div>
                         <div class="event-source">${escapeHtml(event.event_label)}</div>
                         <p class="event-summary">${escapeHtml(event.summary)}</p>
                         <p class="event-evidence expert-depth"><strong>Evidence:</strong> ${escapeHtml(event.evidence_quote || event.source_document_name)}</p>
                         <div class="event-meta guided-depth">
                             <span class="event-pill">${escapeHtml(sourceLabel(event.source))}</span>
                             <span class="event-pill">${escapeHtml(event.document_type || "document")}</span>
-                            <span class="event-pill">${escapeHtml(event.review_status || "needs_review")}</span>
                             <span class="event-pill">${Math.round((event.relevance_score || event.source_confidence || 0) * 100)}% confidence</span>
                         </div>
+                        ${timelineReviewControls(event)}
                     </div>
                     <div class="timeline-spine">
-                        ${event.source_document_id ? `<button class="source-jump" type="button" data-document-id="${escapeHtml(event.source_document_id)}" aria-label="Open source document for ${escapeHtml(event.source_document_name)}" title="Open source document">?</button>` : ""}
+                        ${event.source_document_id ? `<button class="source-jump" type="button" data-document-id="${escapeHtml(event.source_document_id)}" data-source-snippet="${escapeHtml(event.evidence_quote || "")}" aria-label="Open cited passage in ${escapeHtml(event.source_document_name)}" title="Open cited source passage">?</button>` : ""}
                     </div>
                 `;
                 timeline.appendChild(node);
             });
 
             timeline.querySelectorAll(".source-jump").forEach((button) => {
-                button.addEventListener("click", () => openSourcePreview(button.dataset.documentId).catch((error) => showToast(error.message)));
+                button.addEventListener("click", () => openSourcePreview(button.dataset.documentId, button.dataset.sourceSnippet || "").catch((error) => showToast(error.message)));
+            });
+            timeline.querySelectorAll(".analysis-review-action").forEach((button) => {
+                button.addEventListener("click", () => updateCaseAnalysisReviewItem(button).catch((error) => showToast(error.message)));
+            });
+            timeline.querySelectorAll(".timeline-review-action").forEach((button) => {
+                button.addEventListener("click", () => updateTimelineEvent(button).catch((error) => showToast(error.message)));
             });
         }
 
@@ -1292,14 +1555,15 @@
 
         function renderTimelineStats(events) {
             const stats = document.getElementById("timelineStats");
-            const uniqueDocuments = new Set(events.map((event) => event.source_document_id).filter(Boolean));
-            const uniqueSources = new Set(events.map((event) => event.source).filter(Boolean));
-            const needsReview = events.filter((event) => event.review_status === "needs_review" || !event.user_confirmed || Number(event.source_confidence || event.relevance_score || 0) < 0.65).length;
+            const uniqueDocuments = new Set(events.map((event) => event.source_document_id).filter(Boolean).map(String));
+            const confirmed = events.filter((event) => event.review_status === "confirmed").length;
+            const proposals = events.filter((event) => event._analysisProposal).length;
+            const needsReview = events.filter((event) => event.review_status === "needs_review").length;
             document.getElementById("timelineSourceMode").textContent = timelineSourceMode;
             stats.innerHTML = [
-                { label: "Timeline events", value: events.length },
+                { label: "Confirmed", value: confirmed },
+                { label: "Cited proposals", value: proposals },
                 { label: "Source documents", value: uniqueDocuments.size },
-                { label: "Sources", value: uniqueSources.size },
                 { label: "Needs review", value: needsReview }
             ].map((item) => `
                 <article class="timeline-stat">
@@ -1311,7 +1575,7 @@
 
         function focusDocument(documentIdValue, scrollToDocument) {
             document.querySelectorAll(".document-source-card").forEach((card) => {
-                card.classList.toggle("is-active", card.id === `document-${documentIdValue}`);
+                card.classList.toggle("is-active", String(card.dataset.documentId) === String(documentIdValue));
             });
             const target = document.getElementById(`document-${documentIdValue}`);
             if (target && scrollToDocument) target.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -1331,9 +1595,49 @@
             ];
         }
 
+        function normalizedSourceSnippet(value = "") {
+            return String(value || "").replace(/\s+/g, " ").replace(/\.\.\.$/, "").trim();
+        }
+
+        function normalizedTextMap(value = "") {
+            const source = String(value || "");
+            let normalized = "";
+            const map = [];
+            let pendingWhitespaceIndex = null;
+            for (let index = 0; index < source.length; index += 1) {
+                const char = source[index];
+                if (/\s/.test(char)) {
+                    if (normalized && !normalized.endsWith(" ") && pendingWhitespaceIndex === null) pendingWhitespaceIndex = index;
+                    continue;
+                }
+                if (pendingWhitespaceIndex !== null) {
+                    normalized += " ";
+                    map.push(pendingWhitespaceIndex);
+                    pendingWhitespaceIndex = null;
+                }
+                normalized += char;
+                map.push(index);
+            }
+            return { normalized, map };
+        }
+
+        function sourcePassageMarkup(text = "", snippet = "") {
+            const source = String(text || "");
+            const needle = normalizedSourceSnippet(snippet);
+            const mapped = normalizedTextMap(source);
+            const index = needle ? mapped.normalized.toLocaleLowerCase().indexOf(needle.toLocaleLowerCase()) : -1;
+            if (index < 0) return escapeHtml(contextPreview(source, 2400));
+            const matchedStart = mapped.map[index] ?? 0;
+            const matchedEndIndex = mapped.map[index + needle.length - 1] ?? matchedStart;
+            const matchedEnd = Math.min(source.length, matchedEndIndex + 1);
+            const start = Math.max(0, matchedStart - 180);
+            const end = Math.min(source.length, matchedEnd + 260);
+            return `${start ? "..." : ""}${escapeHtml(source.slice(start, matchedStart))}<mark class="source-passage-highlight">${escapeHtml(source.slice(matchedStart, matchedEnd))}</mark>${escapeHtml(source.slice(matchedEnd, end))}${end < source.length ? "..." : ""}`;
+        }
+
         function renderSourcePreview(doc, detail = {}) {
             document.getElementById("sourcePreviewTitle").textContent = documentTitle(doc);
-            document.getElementById("sourcePreviewSubtitle").textContent = `${doc.source_type || "ledger"} / ${doc.source_uri || "no source URI"} / ${doc.confidentiality_level || "normal"}`;
+            document.getElementById("sourcePreviewSubtitle").textContent = `${doc.source_type || "ledger"} / ${doc.source_uri || "no source URI"} / ${doc.confidentiality_level || "normal"}${sourcePreviewSnippet ? " / cited passage highlighted" : ""}`;
             const text = doc.extracted_text || doc.ocr_text || doc.summary || "No extracted text is available for this document yet.";
             document.getElementById("sourcePreviewBody").innerHTML = `
                 <div class="source-preview-grid">
@@ -1345,6 +1649,7 @@
                     `).join("")}
                 </div>
                 ${doc.summary ? `<section class="source-preview-text"><span>Summary</span><p>${escapeHtml(doc.summary)}</p></section>` : ""}
+                ${sourcePreviewSnippet ? `<section class="source-preview-text"><span>Cited passage</span><p>${sourcePassageMarkup(text, sourcePreviewSnippet)}</p></section>` : ""}
                 <section class="source-preview-text"><span>Extracted text</span><p>${escapeHtml(contextPreview(text, 2400))}</p></section>
                 ${doc.source_uri ? `<section class="source-preview-text"><span>Original reference</span><p>${escapeHtml(doc.source_uri)}</p></section>` : ""}
             `;
@@ -1363,18 +1668,24 @@
             }
         }
 
-        async function openSourcePreview(documentIdValue) {
+        async function openSourcePreview(documentIdValue, snippet = "") {
             if (!selectedCaseId || !documentIdValue) return;
             sourcePreviewDocumentId = documentIdValue;
+            sourcePreviewSnippet = normalizedSourceSnippet(snippet);
+            sourcePreviewReturnFocus = document.activeElement;
             const cached = documentById(documentIdValue);
             const detail = await apiFetch(`/api/cases/${selectedCaseId}/documents/${documentIdValue}`);
             renderSourcePreview(detail.document || cached, detail);
             document.getElementById("sourcePreviewShell").hidden = false;
             focusDocument(documentIdValue, false);
+            document.getElementById("closeSourcePreview").focus();
         }
 
         function closeSourcePreview() {
             document.getElementById("sourcePreviewShell").hidden = true;
+            sourcePreviewSnippet = "";
+            if (sourcePreviewReturnFocus && typeof sourcePreviewReturnFocus.focus === "function") sourcePreviewReturnFocus.focus();
+            sourcePreviewReturnFocus = null;
         }
 
         function showToast(message) {
@@ -1385,12 +1696,59 @@
             window.timelineToastTimer = setTimeout(() => toast.classList.remove("show"), 5000);
         }
 
+        async function updateCaseAnalysisReviewItem(button) {
+            if (!selectedCaseId) return;
+            const itemId = Number(button.dataset.analysisReviewId);
+            const action = button.dataset.analysisAction;
+            if (!itemId || !action) throw new Error("This cited timeline proposal is unavailable.");
+            const originalLabel = button.textContent;
+            button.disabled = true;
+            button.textContent = action === "confirm_timeline" ? "Confirming..." : "Updating...";
+            try {
+                await apiFetch(`/api/cases/${selectedCaseId}/case-analysis/review-items/${itemId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ action })
+                });
+                const message = action === "confirm_timeline"
+                    ? "Cited event confirmed in the legal chronology."
+                    : action === "timeline"
+                        ? "Timeline proposal prepared for editing."
+                        : "Cited proposal dismissed from this analysis run.";
+                showToast(message);
+                await loadCaseLedger(selectedCaseId);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalLabel;
+            }
+        }
+
+        async function updateTimelineEvent(button) {
+            if (!selectedCaseId) return;
+            const eventId = Number(button.dataset.eventId);
+            const action = button.dataset.eventAction;
+            if (!eventId || !action) throw new Error("This timeline event is unavailable.");
+            const originalLabel = button.textContent;
+            button.disabled = true;
+            button.textContent = action === "approve" ? "Confirming..." : "Rejecting...";
+            try {
+                await apiFetch(`/api/cases/${selectedCaseId}/timeline/${eventId}`, {
+                    method: "PATCH",
+                    body: JSON.stringify({ action })
+                });
+                showToast(action === "approve" ? "Timeline event confirmed." : "Timeline event rejected.");
+                await loadCaseLedger(selectedCaseId);
+            } finally {
+                button.disabled = false;
+                button.textContent = originalLabel;
+            }
+        }
+
         function applyFilters() {
             const query = document.getElementById("searchEvidence").value.trim().toLowerCase();
             const source = document.getElementById("sourceFilter").value;
             const type = document.getElementById("typeFilter").value;
             const filtered = timelineData.filter((event) => {
-                const matchesQuery = !query || `${event.summary} ${event.source_document_name} ${event.evidence_quote}`.toLowerCase().includes(query);
+                const matchesQuery = !query || `${event.actor} ${event.event_label} ${event.summary} ${event.source_document_name} ${event.evidence_quote} ${event.review_status}`.toLowerCase().includes(query);
                 const matchesSource = source === "all" || event.source === source;
                 const matchesType = type === "all" || event.document_type === type;
                 return matchesQuery && matchesSource && matchesType;
@@ -1409,8 +1767,11 @@
                 timelineData = EMPTY_TIMELINE;
                 documentsData = [];
                 evidenceLinksData = [];
+                caseAnalysisData = { runs: [], latest: null };
+                missingEvidenceData = [];
                 timelineSourceMode = "no persisted case";
                 renderCaseHeader();
+                renderAnalysisCoverage();
                 renderFilterOptions(timelineData);
                 applyFilters();
                 return;
@@ -1419,39 +1780,34 @@
         }
 
         async function loadCaseLedger(caseId) {
-            selectedCaseId = Number(caseId);
-            updateCaseUrl(selectedCaseId);
+            updateCaseUrl(caseId);
             timelineSourceMode = "loading ledger";
-            const [casePayload, documentsPayload, timelinePayload, evidencePayload] = await Promise.all([
+            const [casePayload, documentsPayload, timelinePayload, evidencePayload, analysisPayload, missingEvidencePayload] = await Promise.all([
                 apiFetch(`/api/cases/${selectedCaseId}`),
                 apiFetch(`/api/cases/${selectedCaseId}/documents`),
                 apiFetch(`/api/cases/${selectedCaseId}/timeline`),
-                apiFetch(`/api/cases/${selectedCaseId}/evidence`)
+                apiFetch(`/api/cases/${selectedCaseId}/evidence`),
+                apiFetch(`/api/cases/${selectedCaseId}/case-analysis`),
+                apiFetch(`/api/cases/${selectedCaseId}/missing-evidence`)
             ]);
             caseData = casePayload;
             documentsData = documentsPayload.documents || [];
             evidenceLinksData = evidencePayload.evidence_links || [];
-            timelineData = sortTimeline((timelinePayload.timeline || []).map(normalizedEvent));
-            timelineSourceMode = "legal ledger";
+            caseAnalysisData = analysisPayload || { runs: [], latest: null };
+            missingEvidenceData = missingEvidencePayload.missing_evidence || [];
+            const persistedEvents = (timelinePayload.timeline || []).map(normalizedEvent);
+            const citedProposals = caseAnalysisTimelineProposals();
+            timelineData = sortTimeline([...persistedEvents, ...citedProposals]);
+            timelineSourceMode = citedProposals.length
+                ? `legal ledger + ${citedProposals.length} cited proposal${citedProposals.length === 1 ? "" : "s"}`
+                : "legal ledger";
             renderCaseSelector();
             renderCaseHeader();
+            renderAnalysisCoverage();
             renderFilterOptions(timelineData);
             applyFilters();
             const hashDocument = (window.location.hash || "").replace("#document-", "");
             if (hashDocument) focusDocument(hashDocument, true);
-        }
-
-        function renderFilterOptions(events) {
-            const sourceSelect = document.getElementById("sourceFilter");
-            const typeSelect = document.getElementById("typeFilter");
-            const currentSource = sourceSelect.value || "all";
-            const currentType = typeSelect.value || "all";
-            const sources = [...new Set(events.map((event) => event.source).filter(Boolean))].sort();
-            const types = [...new Set(events.map((event) => event.document_type).filter(Boolean))].sort();
-            sourceSelect.innerHTML = [`<option value="all">All Sources</option>`, ...sources.map((source) => `<option value="${escapeHtml(source)}">${escapeHtml(sourceLabel(source))}</option>`)].join("");
-            typeSelect.innerHTML = [`<option value="all">All Types</option>`, ...types.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(sourceLabel(type))}</option>`)].join("");
-            sourceSelect.value = sources.includes(currentSource) ? currentSource : "all";
-            typeSelect.value = types.includes(currentType) ? currentType : "all";
         }
 
         document.querySelectorAll("[data-depth]").forEach((button) => {
@@ -1482,6 +1838,12 @@
             button.addEventListener("click", () => setTimelineView(button.dataset.view));
         });
         document.getElementById("closeSourcePreview").addEventListener("click", closeSourcePreview);
+        document.getElementById("sourcePreviewShell").addEventListener("click", (event) => {
+            if (event.target.id === "sourcePreviewShell") closeSourcePreview();
+        });
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && !document.getElementById("sourcePreviewShell").hidden) closeSourcePreview();
+        });
         document.getElementById("sourcePreviewLocate").addEventListener("click", () => {
             closeSourcePreview();
             setTimelineDepth("guided");
@@ -1497,6 +1859,8 @@
                 timeline: timelineData,
                 documents: documentsData,
                 evidence_links: evidenceLinksData,
+                latest_case_analysis: caseAnalysisData.latest,
+                missing_evidence_warnings: missingEvidenceData,
                 exported_at: new Date().toISOString()
             }, null, 2)], { type: "application/json" });
             const url = URL.createObjectURL(blob);
@@ -1507,13 +1871,16 @@
             URL.revokeObjectURL(url);
         });
 
-        let storedDepth = "focus";
+        const initialTimelineParams = new URLSearchParams(window.location.search);
+        let storedDepth = initialTimelineParams.get("depth") || "focus";
         try {
-            storedDepth = localStorage.getItem("laroTimelineDepth") || "focus";
+            storedDepth = initialTimelineParams.get("depth") || localStorage.getItem("laroTimelineDepth") || "focus";
         } catch (error) {
-            storedDepth = "focus";
+            storedDepth = initialTimelineParams.get("depth") || "focus";
         }
+        selectedCaseId = caseIdFromUrl();
         setTimelineDepth(storedDepth);
+        setTimelineView(initialTimelineParams.get("view") || "vertical");
         loadCases().catch((error) => {
             timelineSourceMode = "no live data";
             showToast(error.message || "No live timeline data available");
@@ -1522,6 +1889,5 @@
             renderDocuments([]);
         });
     </script>
-    <script src="js/click-actions.js"></script>
 </body>
 </html>
